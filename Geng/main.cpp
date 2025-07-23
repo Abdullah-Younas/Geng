@@ -1,5 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 using namespace std;
@@ -16,6 +19,8 @@ float vertices[] = {
     -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left
 };
 
+float rotValue = 1.0f;
+
 //USE WITH EBOs
 unsigned int indices[] = {
     0, 1, 3,
@@ -24,8 +29,31 @@ unsigned int indices[] = {
 
 //INPUT ACTIONS
 static void processInput(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        rotValue += 0.06f;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        rotValue -= 0.06f;
+    }
+}
+
+glm::mat4 RotMeshX(glm::mat4 trans, float RotValue) {
+    return glm::rotate(trans, glm::radians(-RotValue), glm::vec3(1.0, 0.0, 0.0));
+}
+glm::mat4 RotMeshY(glm::mat4 trans, float RotValue) {
+    return glm::rotate(trans, glm::radians(-RotValue), glm::vec3(0.0, 1.0, 0.0));
+}
+glm::mat4 RotMeshZ(glm::mat4 trans, float RotValue) {
+    return glm::rotate(trans, glm::radians(-RotValue), glm::vec3(0.0, 0.0, 1.0));
+}
+glm::mat4 ScaleMeshComb(glm::mat4 trans, float scale) {
+    return glm::scale(trans, glm::vec3(scale, scale, scale));
+}
+glm::mat4 ScaleMeshXYZ(glm::mat4 trans, float X, float Y, float Z) {
+    return glm::scale(trans, glm::vec3(X, Y, Z));
 }
 
 int main() {
@@ -45,6 +73,14 @@ int main() {
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
     glViewport(0, 0, 800, 600);
+    
+    /*glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
+    glm::mat4 trans = glm::mat4(1.0f);
+    trans = glm::translate(trans, glm::vec3(1.0f, 1.0f, 0.0f));
+    vec = trans * vec;
+    cout << vec.x << vec.y << vec.z << endl;*/
+
+
 
     //Main Code
     //Creating shader and Textures
@@ -54,6 +90,7 @@ int main() {
     if (texture == 0) std::cout << "Failed to load 9.jpg\n";
     if (texture2 == 0) std::cout << "Failed to load RED.jpg\n";
 
+    unsigned int transformLoc = glGetUniformLocation(shader1, "transform");
 
     //Buffer Objects
     unsigned int VAO, VBO, EBO;
@@ -93,6 +130,13 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+        trans = RotMeshX(trans, rotValue);
+        trans = RotMeshY(trans, rotValue);
+        trans = RotMeshZ(trans, rotValue);
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
         //Activating shader while rendering
         glUseProgram(shader1);
