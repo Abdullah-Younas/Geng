@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Rendering">
+      <UniqueIdentifier>{18e13015-e560-4540-b57d-121e240e8d93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Textures">
+      <UniqueIdentifier>{d317f6b0-0d3a-42e0-a19c-cb2671897c15}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -22,28 +28,31 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="shader_utils.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
     <ClCompile Include="TextureImage.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Textures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_utils.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="shaders.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TextureImage.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\OpenGLDirectory\Include\stb_image.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureImage.h">
+      <Filter>Source Files\Textures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="RED.jpg">
+      <Filter>Source Files</Filter>
+    </Image>
+    <Image Include="..\..\..\..\FUN\9.jpg">
       <Filter>Source Files</Filter>
     </Image>
   </ItemGroup>
