@@ -210,7 +210,7 @@ int main() {
         lightColor.z = glm::max(float(sin(glfwGetTime() * 1.3f)), 0.5f);
 
 
-        float ambientStrength = 1.3f;
+        float ambientStrength = 1.2f;
         float diffuseStrength = 0.8f;
         float specularStrength = 0.0f;
 
