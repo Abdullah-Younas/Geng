@@ -30,8 +30,7 @@ const char* fragmentShaderSource1 = R"(
 #version 330 core
 struct Material {
     sampler2D diffuse;
-    
-    vec3 specular;
+    sampler2D specular;
     float shininess;
 }; 
 
@@ -61,18 +60,18 @@ in vec3 FragPos;
 
 void main()
 {
-    vec3 ambient  = light.ambient * vec3(texture(material.diffuse, TexCoords));
+    vec3 ambient  = light.ambient  * vec3(texture(material.diffuse, TexCoords));
     
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse  = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
+    vec3 diffuse  = light.diffuse  * diff * vec3(texture(material.diffuse, TexCoords));
     
 
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3 specular = light.specular * (spec * material.specular); 
+    vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
 
     vec3 result = ambient + diffuse + specular;
     FragColor = vec4(result, 1.0);

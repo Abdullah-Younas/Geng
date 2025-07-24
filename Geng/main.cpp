@@ -172,17 +172,19 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    //unsigned int specularMap = loadTexture("container2.jpg");
+    unsigned int specularMap = loadTexture("container2.jpg");
     unsigned int diffuseMap = loadTexture("container.jpg");
 
 
 
+    // Shaders
     // Shaders
     unsigned int lightingShader = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
     unsigned int lampShader = createShaderProgram(vertexShaderSource, lampFragmentShaderSource);
 
     glUseProgram(lightingShader);
     glUniform1i(glGetUniformLocation(lightingShader, "material.diffuse"), 0);
+    glUniform1i(glGetUniformLocation(lightingShader, "material.specular"), 1);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = float(glfwGetTime());
@@ -217,16 +219,16 @@ int main() {
         glUniform1f(glGetUniformLocation(lightingShader, "material.shininess"), 32.0f);
 
         glm::vec3 lightColor;
-       // lightColor.x = glm::max(float(sin(glfwGetTime() * 2.0f)), 0.5f);
-       // lightColor.y = glm::max(float(sin(glfwGetTime() * 0.7f)), 0.5f);
-        //lightColor.z = glm::max(float(sin(glfwGetTime() * 1.3f)), 0.5f);
+        // lightColor.x = glm::max(float(sin(glfwGetTime() * 2.0f)), 0.5f);
+        // lightColor.y = glm::max(float(sin(glfwGetTime() * 0.7f)), 0.5f);
+         //lightColor.z = glm::max(float(sin(glfwGetTime() * 1.3f)), 0.5f);
         lightColor.x = 1.0f;
-            lightColor.y = 1.0f;
-            lightColor.z = 1.0f;
+        lightColor.y = 1.0f;
+        lightColor.z = 1.0f;
 
         float ambientStrength = 1.5f;
         float diffuseStrength = 0.8f;
-        float specularStrength = 1.2f;
+        float specularStrength = 1.9f;
 
         glm::vec3 diffuseColor = lightColor * diffuseStrength;
         glm::vec3 ambientColor = diffuseColor * ambientStrength;
@@ -239,6 +241,8 @@ int main() {
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specularMap);
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
