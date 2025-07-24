@@ -6,9 +6,11 @@ const char* vertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
 
 out vec3 FragPos;
 out vec3 Normal;
+out vec2 TexCoords;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -19,6 +21,7 @@ void main()
     FragPos = vec3(model * vec4(aPos, 1.0));
     Normal = mat3(transpose(inverse(model))) * aNormal; // Important
     gl_Position = projection * view * vec4(FragPos, 1.0);
+    TexCoords = aTexCoords;
 }
 )";
 
@@ -26,11 +29,13 @@ void main()
 const char* fragmentShaderSource1 = R"(
 #version 330 core
 struct Material {
-    vec3 ambient;
-    vec3 diffuse;
+    sampler2D diffuse;
+    
     vec3 specular;
     float shininess;
 }; 
+
+in vec2 TexCoords;
 
 uniform Material material;
 
@@ -56,12 +61,12 @@ in vec3 FragPos;
 
 void main()
 {
-    vec3 ambient  = light.ambient * material.ambient;
+    vec3 ambient  = light.ambient * vec3(texture(material.diffuse, TexCoords));
     
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse  = light.diffuse * (diff * material.diffuse);
+    vec3 diffuse  = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
     
 
     vec3 viewDir = normalize(viewPos - FragPos);
@@ -75,15 +80,16 @@ void main()
 )";
 
 // Lamp fragment shader (just white)
+//uniform vec3 lightColor;
+//FragColor = vec4(lightColor, 1.0); // white
 const char* lampFragmentShaderSource = R"(
 #version 330 core
 out vec4 FragColor;
 
-uniform vec3 lightColor;
 
 void main()
 {
-    FragColor = vec4(lightColor, 1.0); // white
+    FragColor = vec4(1.0); // white
 }
 )";
 

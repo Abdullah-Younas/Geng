@@ -148,6 +148,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\..\FUN\9.jpg" />
+    <Image Include="..\..\..\iloveimg-converted\container.jpg" />
+    <Image Include="container.jpg" />
+    <Image Include="container2.jpg" />
     <Image Include="RED.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
