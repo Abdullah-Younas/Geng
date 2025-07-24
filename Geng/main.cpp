@@ -10,6 +10,12 @@ using namespace std;
 #include "shader_utils.h"
 #include "shaders.h"
 #include "TextureImage.h"
+#include "Camera.h"
+
+
+float deltaTime = 0.0f;	// Time between current frame and last frame
+float lastFrame = 0.0f; // Time of last frame
+
 // SHAPE
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -76,18 +82,56 @@ unsigned int indices[] = {
     1, 2, 3
 };
 
-//INPUT ACTIONS
-static void processInput(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = 800.0f / 2.0;
+float lastY = 600.0 / 2.0;
+float fov = 65.0f;
+bool firstMouse = true;
+
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    static float lastX = 800.0f / 2.0f;
+    static float lastY = 600.0f / 2.0f;
+    static bool firstMouse = true;
+
+    if (firstMouse)
+    {
+        lastX = float(xpos);
+        lastY = float(ypos);
+        firstMouse = false;
     }
-    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        rotValue += 0.06f;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        rotValue -= 0.06f;
-    }
+
+    float xoffset = float(xpos) - lastX;
+    float yoffset = lastY - float(ypos); // reversed
+    lastX = float(xpos);
+    lastY = float(ypos);
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
 }
+
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    camera.ProcessMouseScroll((float)yoffset);
+}
+
+//INPUT ACTIONS
+void processInput(GLFWwindow* window)
+{
+    float currentDelta = deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, currentDelta);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, currentDelta);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, currentDelta);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, currentDelta);
+}
+
 
 glm::mat4 RotMeshX(glm::mat4 trans, float RotValue) {
     return glm::rotate(trans, glm::radians(-RotValue), glm::vec3(1.0, 0.0, 0.0));
@@ -121,28 +165,24 @@ int main() {
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    glfwSetScrollCallback(window, scroll_callback);
+
     glEnable(GL_DEPTH_TEST);
 
     glViewport(0, 0, 800, 600);
     int width = 800;
     int height = 600;
     
-    /*glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
-    glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(1.0f, 1.0f, 0.0f));
-    vec = trans * vec;
-    cout << vec.x << vec.y << vec.z << endl;*/
+    
+
 
     glm::mat4 Oproj = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.1f, 100.0f); // An orthographic projection matrix directly maps coordinates to the 2D plane that is your screen
 
 
-
-    glm::mat4 view = glm::mat4(1.0f);
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-
-    glm::mat4 Pproj;
-    Pproj = glm::perspective(glm::radians(65.0f), float(width) / float(height), 0.1f, 100.0f); // Perspective projection Real life kind of 
-
+    
     //Main Code
     //Creating shader and Textures
     unsigned int shader1 = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
@@ -171,10 +211,6 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // COLOR
-    //glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    //glEnableVertexAttribArray(1);
-
     // TEXTURE COORD
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
@@ -189,8 +225,16 @@ int main() {
     glUniform1i(glGetUniformLocation(shader1, "ourTexture2"), 1);
 
     while (!glfwWindowShouldClose(window)) {
+        float currentFrame = float(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 Pproj;
+        Pproj = glm::perspective(glm::radians(camera.Zoom), float(width) / float(height), 0.1f, 100.0f);
+
 
 
         glm::mat4 trans = glm::mat4(1.0f);
@@ -207,7 +251,10 @@ int main() {
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
         int viewLoc = glGetUniformLocation(shader1, "view");
+        glm::mat4 view = camera.GetViewMatrix();
+
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
 
         int ProjectionLoc = glGetUniformLocation(shader1, "projection");
         glUniformMatrix4fv(ProjectionLoc, 1, GL_FALSE, glm::value_ptr(Pproj));
@@ -227,13 +274,6 @@ int main() {
             model = glm::translate(model, cubePositions[i]);
             float angle = 20.0f * i;
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
-        for (unsigned int i = 0; i < 10; i++) {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]*2.0f);
-            model = glm::rotate(model, (float)glfwGetTime() * glm::radians(90.0f), glm::vec3(0.5f, 1.0f, 0.0f));
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }

@@ -141,6 +141,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\OpenGLDirectory\Include\stb_image.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="shaders.h" />
     <ClInclude Include="shader_utils.h" />
     <ClInclude Include="TextureImage.h" />

@@ -19,6 +19,9 @@
     <Filter Include="Source Files\Textures">
       <UniqueIdentifier>{d317f6b0-0d3a-42e0-a19c-cb2671897c15}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Camera">
+      <UniqueIdentifier>{a20a9c05-99a8-4f4b-841a-ee8edcdbb0fd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -46,6 +49,9 @@
     </ClInclude>
     <ClInclude Include="TextureImage.h">
       <Filter>Source Files\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Source Files\Camera</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
