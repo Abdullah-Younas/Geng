@@ -82,5 +82,8 @@
     <Image Include="container.jpg">
       <Filter>Source Files</Filter>
     </Image>
+    <Image Include="..\..\..\White.jpg">
+      <Filter>Source Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
