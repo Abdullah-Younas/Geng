@@ -135,16 +135,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\glad\src\glad.c" />
+    <ClCompile Include="CallBacks.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="shader_utils.cpp" />
     <ClCompile Include="TextureImage.cpp" />
+    <ClCompile Include="Transformations.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\OpenGLDirectory\Include\stb_image.h" />
+    <ClInclude Include="CallBacks.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="shaders.h" />
     <ClInclude Include="shader_utils.h" />
     <ClInclude Include="TextureImage.h" />
+    <ClInclude Include="Transformations.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\..\FUN\9.jpg" />
