@@ -1,4 +1,7 @@
 // ================== Includes ==================
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -19,6 +22,8 @@ using namespace std;
 // ================== Globals ==================
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+bool InteractCursor = false;
+float ScreenColor[4] = { 0.75f, 0.80f, 0.85f, 1.0f };
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
@@ -37,6 +42,11 @@ void processInput(GLFWwindow* window) {
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 }
 
 // ================== Texture Loader ==================
@@ -66,7 +76,7 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     glfwSetCursorPosCallback(window, CallBacks::mouse_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSetScrollCallback(window, CallBacks::scroll_callback);
 
     // ================== Vertex Data ==================
@@ -171,6 +181,13 @@ int main() {
     glUniform1i(glGetUniformLocation(lightingShader, "material.diffuse"), 0);
     glUniform1i(glGetUniformLocation(lightingShader, "material.specular"), 1);
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
     // ================== Main Render Loop ==================
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = float(glfwGetTime());
@@ -180,12 +197,12 @@ int main() {
         processInput(window);
 
         // Clear Buffers
-        glClearColor(0.75f, 0.80f, 0.85f, 1.0f);
-
-
-
-
+        glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
@@ -313,10 +330,22 @@ int main() {
         }
 
 
+        ImGui::Begin("Hehe, me is window");
+        ImGui::Text("My Wifeyy is Fajer");
+        ImGui::ColorEdit4("Sky Color", ScreenColor);
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // ========== End Frame ==========
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     // ================== Cleanup ==================
     glDeleteVertexArrays(1, &cubeVAO);
