@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <iostream>
 
+// ================== Texture Loader ==================
 unsigned int loadTexture(const char* path) {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -30,11 +31,13 @@ unsigned int loadTexture(const char* path) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         stbi_image_free(data);
+
+        //std::cout << "Loaded texture: " << path << " (" << width << "x" << height << ")" << std::endl;
     }
     else {
         std::cout << "Texture failed to load at path: " << path << std::endl;
         stbi_image_free(data);
-        return 0; // Return 0 to indicate failure
+        return 0;
     }
 
     return textureID;

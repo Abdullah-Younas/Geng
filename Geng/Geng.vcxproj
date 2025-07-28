@@ -108,7 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>A:\AbdullahWork\OpenGLDirectory\Include\glm;A:\AbdullahWork\OpenGLDirectory\Include;A:\AbdullahWork\GraphicsEng\Geng\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>A:\AbdullahWork\OpenGLDirectory\Include\glm;A:\AbdullahWork\OpenGLDirectory\Include;A:\AbdullahWork\GraphicsEng\Geng\imgui;A:\AbdullahWork\OpenGLDirectory\Include\json;A:\AbdullahWork\OpenGLDirectory\Include\OBJLoad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -170,10 +170,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\..\FUN\9.jpg" />
-    <Image Include="..\..\..\iloveimg-converted\container.jpg" />
     <Image Include="..\..\..\White.jpg" />
-    <Image Include="container.jpg" />
-    <Image Include="container2.jpg" />
     <Image Include="RED.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
