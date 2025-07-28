@@ -1,0 +1,5 @@
+newmtl mat_red
+Ka 1.0 0.0 0.0         # Ambient color
+Kd 1.0 0.0 0.0         # Diffuse color
+Ks 1.0 1.0 1.0         # Specular color
+map_Kd container.jpg      # Diffuse texture

@@ -181,12 +181,15 @@
     //FragColor = vec4(lightColor, 1.0); // white
     const char* lampFragmentShaderSource = R"(
     #version 330 core
+
+    uniform vec3 Color;
+
     out vec4 FragColor;
 
 
     void main()
     {
-        FragColor = vec4(1.0); // white
+        FragColor = vec4(Color, 1.0); // white
     }
     )";
 
