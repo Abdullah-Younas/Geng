@@ -10,7 +10,9 @@ unsigned int loadTexture(const char* path) {
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;
+    stbi_set_flip_vertically_on_load(true); // Add this for correct texture orientation
     unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
+
     if (data) {
         GLenum format;
         if (nrComponents == 1)
@@ -29,13 +31,12 @@ unsigned int loadTexture(const char* path) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        stbi_image_free(data);
+        std::cout << "Loaded texture: " << path << " (" << width << "x" << height << ")\n";
     }
     else {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
-        stbi_image_free(data);
-        return 0; // Return 0 to indicate failure
+        std::cerr << "Texture failed to load at path: " << path << std::endl;
     }
+    stbi_image_free(data);
 
     return textureID;
 }

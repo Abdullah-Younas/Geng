@@ -76,6 +76,42 @@ struct Mesh
     Material material;
 };
 
+std::unordered_map<std::string, GLuint> loadedTextures;
+// ================== Texture Loader ==================
+unsigned int loadTexture(const char* path);
+
+GLuint LoadMaterialTexture(const std::string& path) {
+    if (path.empty()) {
+        std::cout << "No texture path provided\n";
+        return 0;
+    }
+
+    if (loadedTextures.find(path) != loadedTextures.end()) {
+        return loadedTextures[path];
+    }
+
+    std::cout << "Loading texture: " << path << std::endl;
+    GLuint textureID = loadTexture(path.c_str());
+    if (textureID) {
+        loadedTextures[path] = textureID;
+        return textureID;
+    }
+
+    // Try alternative paths if initial load fails
+    size_t lastSlash = path.find_last_of("/\\");
+    std::string filename = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
+    textureID = loadTexture(filename.c_str());
+
+    if (textureID) {
+        loadedTextures[path] = textureID;
+        return textureID;
+    }
+
+    std::cerr << "Failed to load texture: " << path << std::endl;
+    return 0;
+}
+
+
 class OBJLoader {
 public:
     static bool Load(const std::string& objPath, std::vector<Mesh>& meshes) {
@@ -399,8 +435,7 @@ void processInput(GLFWwindow* window) {
 
 }
 
-// ================== Texture Loader ==================
-unsigned int loadTexture(const char* path);
+
 
 // ================== Main ==================
 int main() {
@@ -604,16 +639,14 @@ int main() {
     glEnableVertexAttribArray(0);
 
     // ================== Textures ==================
-    unsigned int specularMap = loadTexture("container2.jpg");
-    unsigned int diffuseMap = loadTexture("material_baseColor.jpg");
 
     // ================== Shaders ==================
     unsigned int lightingShader = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
     unsigned int lampShader = createShaderProgram(vertexShaderSource, lampFragmentShaderSource);
 
     glUseProgram(lightingShader);
-    glUniform1i(glGetUniformLocation(lightingShader, "material.diffuse"), 0);
-    glUniform1i(glGetUniformLocation(lightingShader, "material.specular"), 1);
+    //glUniform1i(glGetUniformLocation(lightingShader, "material.diffuse"), 0);
+    //glUniform1i(glGetUniformLocation(lightingShader, "material.specular"), 1);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -646,7 +679,6 @@ int main() {
         glUseProgram(lightingShader);
         glm::mat4 model = glm::mat4(1.0f);
         model = transformer.RotMeshY(model, glfwGetTime() * 30.0f);
-        model = transformer.RotMeshX(model, glfwGetTime() * 20.0f);
         model = transformer.ScaleMeshComb(model, 0.75f);
 
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
@@ -700,46 +732,53 @@ int main() {
         glUniform3f(glGetUniformLocation(lightingShader, "material.specular"), 1.0f, 1.0f, 1.0f);
 
 
-
-
-        // Textures
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specularMap);
-
         // Render Cube
         glBindVertexArray(cubeVAO);
-
-        /*for (unsigned int i = 0; i < 10; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f); // Start with identity
-            model = glm::translate(model, cubePositions[i]);
-
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-
-            // === Send model matrix to shader manually ===
-            int modelLoc = glGetUniformLocation(lightingShader, "model");
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-            // === Now draw the object ===
-            glBindVertexArray(cubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }*/
+        // In your render loop, modify the mesh rendering section to this:
+        // In your render loop:
         for (size_t i = 0; i < meshes.size(); ++i) {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // Position at origin
-            model = glm::scale(model, glm::vec3(1.0f)); // Scale if needed
+            const auto& mesh = meshes[i];
 
-            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+            // Debug output
+            std::cout << "Rendering mesh " << i << " (" << mesh.vertices.size()
+                << " vertices, " << mesh.indices.size() << " indices)\n";
+            if (!mesh.vertices.empty()) {
+                std::cout << "First vertex UV: (" << mesh.vertices[0].texCoord.x
+                    << ", " << mesh.vertices[0].texCoord.y << ")\n";
+            }
 
-            // Bind the mesh's VAO
-            glBindVertexArray(meshVAOs[i]);
+            // Bind textures
+            GLuint diffuseTex = 0;
+            if (!mesh.material.diffuseTexture.empty()) {
+                diffuseTex = LoadMaterialTexture(mesh.material.diffuseTexture);
+                if (diffuseTex) {
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, diffuseTex);
+                    glUniform1i(glGetUniformLocation(lightingShader, "material.diffuse"), 0);
+
+                    // Use same texture for specular if no separate specular map
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, diffuseTex);
+                    glUniform1i(glGetUniformLocation(lightingShader, "material.specular"), 1);
+                }
+            }
+
+            // Set material properties
+            glUniform3fv(glGetUniformLocation(lightingShader, "material.ambient"), 1,
+                glm::value_ptr(mesh.material.ambient));
+            glUniform3fv(glGetUniformLocation(lightingShader, "material.diffuse"), 1,
+                glm::value_ptr(mesh.material.diffuse));
+            glUniform3fv(glGetUniformLocation(lightingShader, "material.specular"), 1,
+                glm::value_ptr(mesh.material.specular));
+            glUniform1f(glGetUniformLocation(lightingShader, "material.shininess"),
+                mesh.material.shininess);
 
             // Draw the mesh
-            glDrawElements(GL_TRIANGLES, meshes[i].indices.size(), GL_UNSIGNED_INT, 0);
+            glBindVertexArray(meshVAOs[i]);
+            glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, 0);
         }
+ 
+ 
         // ========== Lamp Pass ==========
         
         glUseProgram(lampShader);
@@ -752,7 +791,7 @@ int main() {
         glUniformMatrix4fv(glGetUniformLocation(lampShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3f(glGetUniformLocation(lampShader, "Color"), PointLightDiff[0], PointLightDiff[1], PointLightDiff[2]);
 
-        for (unsigned int i = 0; i < 4; i++)
+        /*for (unsigned int i = 0; i < 4; i++)
         {
             glm::mat4 model = glm::mat4(1.0f);
 
@@ -774,7 +813,7 @@ int main() {
 
             glBindVertexArray(lightVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        }*/
 
 
         ImGui::Begin("Hehe, me is window");
