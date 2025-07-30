@@ -72,6 +72,9 @@
     <ClCompile Include="..\imgui\imgui_impl_opengl2.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="model_loader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_utils.h">
@@ -124,6 +127,9 @@
     </ClInclude>
     <ClInclude Include="..\imgui\imgui_impl_opengl3_loader.h">
       <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="model_loader.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
