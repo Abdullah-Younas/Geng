@@ -139,15 +139,6 @@
     <Image Include="..\..\..\..\FUN\9.jpg">
       <Filter>Source Files</Filter>
     </Image>
-    <Image Include="..\..\..\iloveimg-converted\container.jpg">
-      <Filter>Source Files</Filter>
-    </Image>
-    <Image Include="container2.jpg">
-      <Filter>Source Files</Filter>
-    </Image>
-    <Image Include="container.jpg">
-      <Filter>Source Files</Filter>
-    </Image>
     <Image Include="..\..\..\White.jpg">
       <Filter>Source Files</Filter>
     </Image>
