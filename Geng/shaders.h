@@ -73,6 +73,7 @@
     uniform SpotLight spotLight;
     uniform Material material;
     uniform vec3 viewPos;
+    uniform float dirIntensity;
 
     out vec4 FragColor;
 
@@ -133,7 +134,7 @@
         vec3 ambient = light.ambient * texture(material.diffuse, TexCoords).rgb;
         vec3 diffuse = light.diffuse * diff * texture(material.diffuse, TexCoords).rgb;
         vec3 specular = light.specular * spec * texture(material.specular, TexCoords).rgb;
-        return (ambient + diffuse + specular);
+        return (ambient + diffuse + specular) * dirIntensity;
     }
 
     // Calculates point light

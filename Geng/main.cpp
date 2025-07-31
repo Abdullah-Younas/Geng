@@ -31,10 +31,11 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 bool InteractCursor = false;
 
-float ScreenColor[4] = { 0.75f, 0.80f, 0.85f, 1.0f };
+float ScreenColor[4] = { 0.21f, 0.1f, 0.16f, 1.0f };
 
 float DirLightSpec[3] = { 0.5f, 0.5f, 0.5f };
 float DirLightDiff[3] = { 0.4f, 0.4f, 0.4f };
+float DirLightIntensity = 0.5f;
 
 float PointLightSpec[3] = { 0.5f, 0.5f, 0.5f };
 float PointLightDiff[3] = { 0.4f, 0.4f, 0.4f };
@@ -82,7 +83,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Lighting", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1980, 1080, "Lighting", NULL, NULL);
     if (!window) {
         cout << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -110,7 +111,7 @@ int main() {
         glm::vec3(0.0f,  0.0f, -3.0f)
     };
 
-    if (!carModel.Load("nissan_silvia_s13_low-poly.obj")) {
+    if (!carModel.Load("highway.obj")) {
         std::cerr << "Failed to load model" << std::endl;
         return -1;
     }
@@ -145,14 +146,14 @@ int main() {
         ImGui::NewFrame();
 
         // Matrices
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
 
         // ========== Lighting Pass ==========
         glUseProgram(lightingShader);
         glm::mat4 model = glm::mat4(1.0f);
-        model = transformer.RotMeshY(model, glfwGetTime() * 30.0f);
-        model = transformer.ScaleMeshComb(model, 0.45f);
+        //model = transformer.RotMeshY(model, glfwGetTime() * 30.0f);
+        model = transformer.ScaleMeshComb(model, 0.25f);
 
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -168,6 +169,8 @@ int main() {
         glUniform3f(glGetUniformLocation(lightingShader, "dirLight.ambient"), 0.05f, 0.05f, 0.05f);
         glUniform3f(glGetUniformLocation(lightingShader, "dirLight.diffuse"), DirLightDiff[0], DirLightDiff[1], DirLightDiff[2]);
         glUniform3f(glGetUniformLocation(lightingShader, "dirLight.specular"), DirLightSpec[0], DirLightSpec[1], DirLightSpec[2]);
+        glUniform1f(glGetUniformLocation(lightingShader, "dirIntensity"), DirLightIntensity);
+        
 
         // Point lights
         for (int i = 0; i < 4; i++) {
@@ -190,8 +193,8 @@ int main() {
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.constant"), 1.0f);
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.linear"), 0.09f);
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.quadratic"), 0.032f);
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(8.5f)));
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(10.0f)));
+        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
+        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
 
 
         // Render Cube
@@ -202,6 +205,7 @@ int main() {
         ImGui::Text("Directional Light");
         ImGui::ColorEdit3("Directional Light Specular", DirLightSpec);
         ImGui::ColorEdit3("Directional Light Diffuse", DirLightDiff);
+        ImGui::SliderFloat("Dir Light Intensity", &DirLightIntensity, 0.1f, 50.0f);
         ImGui::Text("Point Light");
         ImGui::ColorEdit3("Point Light Specular", PointLightSpec);
         ImGui::ColorEdit3("Point Light Diffuse", PointLightDiff);

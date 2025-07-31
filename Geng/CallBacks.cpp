@@ -5,8 +5,8 @@
 
 extern Camera camera; // Make sure this camera is declared externally
 
-float lastX = 800.0f / 2.0f;
-float lastY = 600.0f / 2.0f;
+float lastX = 1920.0f / 2.0f;
+float lastY = 1080.0f / 2.0f;
 bool firstMouse = true;
 
 void CallBacks::mouse_callback(GLFWwindow* window, double xpos, double ypos) {
