@@ -170,11 +170,6 @@
     <ClInclude Include="TextureImage.h" />
     <ClInclude Include="Transformations.h" />
   </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\..\..\..\FUN\9.jpg" />
-    <Image Include="..\..\..\White.jpg" />
-    <Image Include="RED.jpg" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

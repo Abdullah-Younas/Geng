@@ -44,6 +44,9 @@ float SpotLightSpec[3] = { 0.5f, 0.5f, 0.5f };
 float SpotlightInnerCutoff = 8.0f;
 float SpotlightOuterCutoff = 12.0f;
 
+float FogIntensity = 0.5f;
+float FogColor[3] = { 0.3f, 0.6f, 0.9f };
+
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 Transformations transformer;
@@ -93,6 +96,8 @@ int main() {
     }
 
     glEnable(GL_DEPTH_TEST);
+    //glDepthMask(GL_FALSE);
+    glDepthFunc(GL_LESS);
 
     glfwSetCursorPosCallback(window, CallBacks::mouse_callback);
     glfwSetScrollCallback(window, CallBacks::scroll_callback);
@@ -154,6 +159,9 @@ int main() {
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
         glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(camera.Position));
+        glUniform1f(glGetUniformLocation(lightingShader, "FogIntensity"), FogIntensity);
+        glUniform3f(glGetUniformLocation(lightingShader, "fogColor"), FogColor[0], FogColor[1], FogColor[2]);
+
 
         // Directional light
         glUniform3f(glGetUniformLocation(lightingShader, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
@@ -202,6 +210,9 @@ int main() {
         ImGui::ColorEdit3("Spot Light Diffuse", SpotLightDiff);
         ImGui::SliderFloat("Inner Cut Off", &SpotlightInnerCutoff, 3.0f, 20.0f);
         ImGui::SliderFloat("Inner Outer Off", &SpotlightOuterCutoff, 5.0f, 25.0f);
+        ImGui::Text("Fog");
+        ImGui::SliderFloat("Fog Intensity", &FogIntensity, 0.1f, 5.0f);
+        ImGui::ColorEdit3("Fog Color", FogColor);
         ImGui::End();
 
         ImGui::Render();

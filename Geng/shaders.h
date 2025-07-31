@@ -88,6 +88,17 @@
         return dot(color, vec3(0.299, 0.587, 0.114));
     }
 
+    float near = 0.1; 
+    float far  = 100.0; 
+    uniform float FogIntensity;
+    uniform vec3 fogColor;
+
+    float LinearizeDepth(float depth) 
+    {
+        float z = depth * 2.0 - 1.0; // back to NDC 
+        return (2.0 * near*far) / (z * (far - near) - (far + near));	
+    }
+
     void main()
     {
         // Properties
@@ -103,8 +114,10 @@
     
         // Spotlight
         result += CalcSpotLight(spotLight, norm, FragPos, viewDir);
-    
-        FragColor = vec4(result, 1.0);
+        
+        float depth = LinearizeDepth(gl_FragCoord.z) / far; // divide by far for demonstration
+        vec4 depthVec4 = vec4(fogColor * pow(depth, FogIntensity), 1.0);
+        FragColor = vec4(result, 1.0) * (1 - depthVec4) + depthVec4;
     }
 
     // Calculates directional light
