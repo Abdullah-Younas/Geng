@@ -41,8 +41,8 @@ void Model::Render(GLuint shaderProgram) {
             glm::value_ptr(mesh.material.diffuse));
         glUniform3fv(glGetUniformLocation(shaderProgram, "material.specular"), 1,
             glm::value_ptr(mesh.material.specular));
-        glUniform1f(glGetUniformLocation(shaderProgram, "material.shininess"),
-            mesh.material.shininess);
+        glUniform1f(glGetUniformLocation(shaderProgram, "material.shininess"), 10);
+//            mesh.material.shininess);
 
         // Draw the mesh
         glBindVertexArray(mesh.VAO);
@@ -227,7 +227,7 @@ GLuint Model::LoadTexture(const std::string& path) {
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;
-    stbi_set_flip_vertically_on_load(true); // Add this for correct texture orientation
+    stbi_set_flip_vertically_on_load(true);
 
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
     if (data) {

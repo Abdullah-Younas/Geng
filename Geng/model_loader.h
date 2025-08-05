@@ -32,6 +32,15 @@ class Model {
 public:
     std::vector<Mesh> meshes;
     std::unordered_map<std::string, GLuint> loadedTextures;
+    std::vector<glm::vec3> GetVertexPositions() const {
+        std::vector<glm::vec3> positions;
+        for (const auto& mesh : meshes) {
+            for (const auto& vertex : mesh.vertices) {
+                positions.push_back(vertex.position);
+            }
+        }
+        return positions;
+    }
 
     bool Load(const std::string& path);
     void Render(GLuint shaderProgram);

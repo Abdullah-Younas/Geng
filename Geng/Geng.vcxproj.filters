@@ -75,6 +75,9 @@
     <ClCompile Include="model_loader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Skybox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_utils.h">
@@ -131,16 +134,8 @@
     <ClInclude Include="model_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="RED.jpg">
-      <Filter>Source Files</Filter>
-    </Image>
-    <Image Include="..\..\..\..\FUN\9.jpg">
-      <Filter>Source Files</Filter>
-    </Image>
-    <Image Include="..\..\..\White.jpg">
-      <Filter>Source Files</Filter>
-    </Image>
+    <ClInclude Include="Skybox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
