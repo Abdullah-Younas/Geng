@@ -51,10 +51,23 @@ float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
 bool skyBoxOn = false;
 
-Camera camera(glm::vec3(0.0f, 0.0f, 2.0f));
+Camera camera(glm::vec3(0.0f, 0.25f, 1.0f));
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 Transformations transformer;
-Model carModel;
+Model AirPlane;
+Model TestLevel;
+
+glm::vec3 AirPlanePos = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 CameraOffset = glm::vec3(0.0f, 0.0f, 0.0f);
+bool TurnLeft;
+bool TurnRight;
+bool pitchUp;
+bool pitchDown;
+const float Gravity = 1.0f;
+const float FlyingSpeed = 5.0f;
+float PlaneRoll = 15.0f;
+float PlaneYaw = 0.0f;
+float TurnSpeed = 25.0f;
 
 
 // ================== Input Handling ==================
@@ -74,6 +87,30 @@ void processInput(GLFWwindow* window) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        TurnLeft = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE) {
+        TurnLeft = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        TurnRight = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE) {
+        TurnRight = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        pitchUp = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE) {
+        pitchUp = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        pitchDown = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE) {
+        pitchDown = false;
+    }
 }
 
 
@@ -115,7 +152,12 @@ int main() {
         glm::vec3(100.0f,  100.0f, 100.0f)
     };
 
-    if (!carModel.Load("RenderVehicle.obj")) {
+    if (!AirPlane.Load("Plane.obj")) {
+        std::cerr << "Failed to load model" << std::endl;
+        return -1;
+    }
+
+    if (!TestLevel.Load("TestLevel.obj")) {
         std::cerr << "Failed to load model" << std::endl;
         return -1;
     }
@@ -155,6 +197,44 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        static float CameraAngle = 0.0f;                       // static so it persists every frame
+        static float CameraPitchAngle = 0.0f;
+        constexpr float CameraTurnSpeed = glm::radians(110.0f);    // convert degrees/sec to radians/sec
+
+        // Rotate camera with input
+        if (TurnLeft)
+            CameraAngle += CameraTurnSpeed * deltaTime;
+        if (TurnRight)
+            CameraAngle -= CameraTurnSpeed * deltaTime;
+        if (pitchUp)
+            CameraPitchAngle -= CameraTurnSpeed * deltaTime;
+        if (pitchDown)
+            CameraPitchAngle += CameraTurnSpeed * deltaTime;
+
+        if (CameraAngle > glm::two_pi<float>()) CameraAngle -= glm::two_pi<float>();
+        if (CameraAngle < 0.0f) CameraAngle += glm::two_pi<float>();
+
+        if (CameraPitchAngle > glm::two_pi<float>()) CameraPitchAngle -= glm::two_pi<float>();
+        if (CameraPitchAngle < 0.0f) CameraPitchAngle += glm::two_pi<float>();
+
+
+
+        // Orbit camera around airplane
+        const float TurnRad = 1.0f;
+        float camX = sin(CameraAngle) * cos(CameraPitchAngle) * TurnRad;
+        float camY = sin(CameraPitchAngle) * TurnRad;
+        float camZ = cos(CameraAngle) * cos(CameraPitchAngle) * TurnRad;
+
+        CameraOffset.x = AirPlanePos.x + camX;
+        CameraOffset.y = AirPlanePos.y + camY + 0.3f;
+        CameraOffset.z = AirPlanePos.z + camZ;
+
+        // Move airplane forward and apply gravity
+        AirPlanePos.y -= Gravity * deltaTime;
+        AirPlanePos.x += -sin(CameraAngle) * cos(CameraPitchAngle) * FlyingSpeed * deltaTime;
+        AirPlanePos.y += -sin(CameraPitchAngle) * FlyingSpeed * deltaTime;
+        AirPlanePos.z += -cos(CameraAngle) * cos(CameraPitchAngle) * FlyingSpeed * deltaTime;
+
         processInput(window);
 
         // Clear Buffers
@@ -165,23 +245,50 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();
+        glm::mat4 view;
+        view = glm::lookAt(CameraOffset,
+                            AirPlanePos,
+                            glm::vec3(0.0f, 1.0f, 0.0f));
 
         // ========== Lighting Pass ==========
         glUseProgram(lightingShader);
-        glm::mat4 model = glm::mat4(1.0f);
-
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));  // move up/down
-        model = transformer.RotMeshY(model, 180.0f);
-        model = transformer.ScaleMeshComb(model, 0.15f);
-
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
         glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(camera.Position));
+        
+        glm::mat4 modelAirplane = glm::mat4(1.0f);
+
+        modelAirplane = glm::translate(modelAirplane, AirPlanePos);  // move up/down
+        modelAirplane = glm::rotate(modelAirplane, CameraAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        modelAirplane = glm::rotate(modelAirplane, -CameraPitchAngle, glm::vec3(1.0f, 0.0f, 0.0f)); // pitch
+
+        if (TurnLeft) {
+            modelAirplane = transformer.RotMeshZ(modelAirplane, -PlaneRoll);
+        }
+        if (TurnRight) {
+            modelAirplane = transformer.RotMeshZ(modelAirplane, PlaneRoll);
+        }
+        
+        modelAirplane = transformer.ScaleMeshComb(modelAirplane, 0.15f);
+
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelAirplane));
+
+        // Render Cube
+        AirPlane.Render(lightingShader);
+
+        glm::mat4 modelTestLevel = glm::mat4(1.0f);
+
+        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -10.0f, 0.0f));  // move up/down
+        modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
+
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
+
+
+        TestLevel.Render(lightingShader);
+
         glUniform1f(glGetUniformLocation(lightingShader, "FogIntensity"), FogIntensity);
         glUniform3f(glGetUniformLocation(lightingShader, "fogColor"), FogColor[0], FogColor[1], FogColor[2]);
 
@@ -217,9 +324,6 @@ int main() {
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.quadratic"), 0.032f);
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
-
-        // Render Cube
-        carModel.Render(lightingShader);
 
         if (skyBoxOn) {
             skybox.Render(view, projection);
@@ -260,7 +364,8 @@ int main() {
 
     // ================== Cleanup ==================
     skybox.Cleanup();  // or remove if relying on destructor
-    carModel.Cleanup();
+    AirPlane.Cleanup();
+    TestLevel.Cleanup();
     glDeleteProgram(lightingShader);
     glDeleteProgram(lampShader);
 
