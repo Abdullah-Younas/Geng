@@ -78,6 +78,9 @@
     <ClCompile Include="glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sphere.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_utils.h">
@@ -85,9 +88,6 @@
     </ClInclude>
     <ClInclude Include="shaders.h">
       <Filter>Source Files\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\OpenGLDirectory\Include\stb_image.h">
-      <Filter>Source Files\Textures</Filter>
     </ClInclude>
     <ClInclude Include="TextureImage.h">
       <Filter>Source Files\Textures</Filter>
@@ -136,6 +136,12 @@
     </ClInclude>
     <ClInclude Include="Skybox.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\Include\stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Sphere.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

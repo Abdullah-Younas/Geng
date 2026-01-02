@@ -27,6 +27,7 @@ using namespace std;
 #include "CallBacks.h"
 #include "model_loader.h"
 #include "Skybox.h"
+#include "TextureImage.h"
 
 // ================== Globals ==================
 float deltaTime = 0.0f;
@@ -36,9 +37,9 @@ float ScreenColor[4] = { 0.21f, 0.1f, 0.16f, 1.0f };
 
 float DirLightDirection[3] = { 0.67f, -1.0f, 1.0f };
 float DirLightSpec[3] = { 1.0f, 1.0f, 1.0f };
-float DirLightAmbient[3] = { 0.05f, 0.05f, 0.05f };
+float DirLightAmbient[3] = { 1.0f, 1.0f, 1.0f };
 float DirLightDiff[3] = { 1.0f, 1.0f, 1.0f };
-float DirLightIntensity = 2.5f;
+float DirLightIntensity = 1.5f;
 
 float PointLightSpec[3] = { 0.0f, 0.0f, 0.0f };
 float PointLightDiff[3] = { 0.0f, 0.0f, 0.0f };
@@ -51,7 +52,12 @@ float SpotlightOuterCutoff = 12.0f;
 float FogIntensity = 1.04f;
 float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
+bool Jumping = false;
 bool skyBoxOn = true;
+
+float verticalVelocity = 0.0f;
+const float gravity = -12.8f;
+const float jumpForce = 7.0f;
 
 Camera camera(glm::vec3(0.0f, 0.25f, 1.0f));
 Transformations transformer;
@@ -76,6 +82,14 @@ void processInput(GLFWwindow* window) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && !Jumping)
+    {
+		verticalVelocity = jumpForce;
+        Jumping = true;
+    }
+}
 
 // ================== Main ==================
 int main() {
@@ -93,6 +107,7 @@ int main() {
     }
     glfwMakeContextCurrent(window);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetKeyCallback(window, key_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         cout << "Failed to initialize GLAD\n";
@@ -148,6 +163,7 @@ int main() {
 
         processInput(window);
 
+
         // Clear Buffers
         glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -156,6 +172,18 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+
+        verticalVelocity += gravity * deltaTime;
+        camera.Position.y += verticalVelocity * deltaTime;
+        camera.UpdateSpeed(4.5f);
+
+        if (camera.Position.y <= 0.0f)
+        {
+            camera.Position.y = 0.0f;
+            verticalVelocity = 0.0f;
+            Jumping = false;
+            camera.UpdateSpeed(6.5f);
+        }
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
@@ -207,6 +235,8 @@ int main() {
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
 
         TestLevel.Render(lightingShader);
+        glUseProgram(lightingShader);
+
 
         if (skyBoxOn) {
             skybox.Render(view, projection);
@@ -248,7 +278,7 @@ int main() {
 
     // ================== Cleanup ==================
     skybox.Cleanup();
-    TestLevel.Cleanup();
+    //TestLevel.Cleanup();
     glDeleteProgram(lightingShader);
     glDeleteProgram(skyboxShader);
 

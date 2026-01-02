@@ -151,6 +151,7 @@
     <ClCompile Include="model_loader.cpp" />
     <ClCompile Include="shader_utils.cpp" />
     <ClCompile Include="Skybox.cpp" />
+    <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="TextureImage.cpp" />
     <ClCompile Include="Transformations.cpp" />
   </ItemGroup>
@@ -172,6 +173,7 @@
     <ClInclude Include="shaders.h" />
     <ClInclude Include="shader_utils.h" />
     <ClInclude Include="Skybox.h" />
+    <ClInclude Include="Sphere.h" />
     <ClInclude Include="TextureImage.h" />
     <ClInclude Include="Transformations.h" />
   </ItemGroup>
