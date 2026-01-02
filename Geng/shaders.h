@@ -102,23 +102,20 @@
 
     void main()
     {
-        // Properties
         vec3 norm = normalize(Normal);
         vec3 viewDir = normalize(viewPos - FragPos);
-    
+
         // Directional lighting
         vec3 result = CalcDirLight(dirLight, norm, viewDir);
-    
+
         // Point lights
         for(int i = 0; i < NR_POINT_LIGHTS; i++)
             result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
-    
+
         // Spotlight
         result += CalcSpotLight(spotLight, norm, FragPos, viewDir);
-        
-        float depth = LinearizeDepth(gl_FragCoord.z) / far; // divide by far for demonstration
-        vec4 depthVec4 = vec4(fogColor * pow(depth, FogIntensity), 1.0);
-        FragColor = vec4(result, 1.0) * (1 - depthVec4) + depthVec4;
+
+        FragColor = vec4(result, 1.0);
     }
 
     // Calculates directional light

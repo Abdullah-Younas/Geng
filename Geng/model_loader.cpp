@@ -34,15 +34,8 @@ void Model::Render(GLuint shaderProgram) {
             }
         }
 
-        // Set material properties
-        glUniform3fv(glGetUniformLocation(shaderProgram, "material.ambient"), 1,
-            glm::value_ptr(mesh.material.ambient));
-        glUniform3fv(glGetUniformLocation(shaderProgram, "material.diffuse"), 1,
-            glm::value_ptr(mesh.material.diffuse));
-        glUniform3fv(glGetUniformLocation(shaderProgram, "material.specular"), 1,
-            glm::value_ptr(mesh.material.specular));
-        glUniform1f(glGetUniformLocation(shaderProgram, "material.shininess"), 10);
-//            mesh.material.shininess);
+        // Set material shininess only
+        glUniform1f(glGetUniformLocation(shaderProgram, "material.shininess"), 32.0f);
 
         // Draw the mesh
         glBindVertexArray(mesh.VAO);

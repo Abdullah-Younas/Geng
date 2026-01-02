@@ -30,13 +30,14 @@ using namespace std;
 // ================== Globals ==================
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-bool InteractCursor = false;
 
 float ScreenColor[4] = { 0.21f, 0.1f, 0.16f, 1.0f };
 
+float DirLightDirection[3] = { 0.67f, -1.0f, 1.0f };
 float DirLightSpec[3] = { 1.0f, 1.0f, 1.0f };
+float DirLightAmbient[3] = { 0.05f, 0.05f, 0.05f };
 float DirLightDiff[3] = { 1.0f, 1.0f, 1.0f };
-float DirLightIntensity = 0.899f;
+float DirLightIntensity = 2.5f;
 
 float PointLightSpec[3] = { 0.0f, 0.0f, 0.0f };
 float PointLightDiff[3] = { 0.0f, 0.0f, 0.0f };
@@ -49,26 +50,11 @@ float SpotlightOuterCutoff = 12.0f;
 float FogIntensity = 1.04f;
 float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
-bool skyBoxOn = false;
+bool skyBoxOn = true;
 
 Camera camera(glm::vec3(0.0f, 0.25f, 1.0f));
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 Transformations transformer;
-Model AirPlane;
 Model TestLevel;
-
-glm::vec3 AirPlanePos = glm::vec3(0.0f, 0.0f, 0.0f);
-glm::vec3 CameraOffset = glm::vec3(0.0f, 0.0f, 0.0f);
-bool TurnLeft;
-bool TurnRight;
-bool pitchUp;
-bool pitchDown;
-const float Gravity = 1.0f;
-const float FlyingSpeed = 5.0f;
-float PlaneRoll = 15.0f;
-float PlaneYaw = 0.0f;
-float TurnSpeed = 25.0f;
-
 
 // ================== Input Handling ==================
 void processInput(GLFWwindow* window) {
@@ -87,30 +73,6 @@ void processInput(GLFWwindow* window) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        TurnLeft = true;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE) {
-        TurnLeft = false;
-    }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        TurnRight = true;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE) {
-        TurnRight = false;
-    }
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        pitchUp = true;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE) {
-        pitchUp = false;
-    }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        pitchDown = true;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE) {
-        pitchDown = false;
-    }
 }
 
 
@@ -129,6 +91,7 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         cout << "Failed to initialize GLAD\n";
@@ -136,41 +99,26 @@ int main() {
     }
 
     glEnable(GL_DEPTH_TEST);
-    //glDepthMask(GL_FALSE);
     glDepthFunc(GL_LESS);
-    //glEnable(GL_CULL_FACE);
-    //glCullFace(GL_BACK);
 
     glfwSetCursorPosCallback(window, CallBacks::mouse_callback);
     glfwSetScrollCallback(window, CallBacks::scroll_callback);
 
-
     glm::vec3 pointLightPositions[] = {
-        glm::vec3(100.0f,  100.0f,  100.0f),
         glm::vec3(100.0f, 100.0f, 100.0f),
-        glm::vec3(100.0f,  100.0f, 100.0f),
-        glm::vec3(100.0f,  100.0f, 100.0f)
+        glm::vec3(100.0f, 100.0f, 100.0f),
+        glm::vec3(100.0f, 100.0f, 100.0f),
+        glm::vec3(100.0f, 100.0f, 100.0f)
     };
-
-    if (!AirPlane.Load("Plane.obj")) {
-        std::cerr << "Failed to load model" << std::endl;
-        return -1;
-    }
 
     if (!TestLevel.Load("TestLevel.obj")) {
         std::cerr << "Failed to load model" << std::endl;
         return -1;
     }
 
-    for (const auto& pos : pointLightPositions) {
-        std::cout << "Light position: " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
-    }
-
     // ================== Shaders ==================
     unsigned int lightingShader = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
-    unsigned int lampShader = createShaderProgram(vertexShaderSource, lampFragmentShaderSource);
     unsigned int skyboxShader = createShaderProgram(CubeMapVShader, CubeMapFShader);
-
 
     std::vector<std::string> faces = {
         "right.jpg",
@@ -197,44 +145,6 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        static float CameraAngle = 0.0f;                       // static so it persists every frame
-        static float CameraPitchAngle = 0.0f;
-        constexpr float CameraTurnSpeed = glm::radians(110.0f);    // convert degrees/sec to radians/sec
-
-        // Rotate camera with input
-        if (TurnLeft)
-            CameraAngle += CameraTurnSpeed * deltaTime;
-        if (TurnRight)
-            CameraAngle -= CameraTurnSpeed * deltaTime;
-        if (pitchUp)
-            CameraPitchAngle -= CameraTurnSpeed * deltaTime;
-        if (pitchDown)
-            CameraPitchAngle += CameraTurnSpeed * deltaTime;
-
-        if (CameraAngle > glm::two_pi<float>()) CameraAngle -= glm::two_pi<float>();
-        if (CameraAngle < 0.0f) CameraAngle += glm::two_pi<float>();
-
-        if (CameraPitchAngle > glm::two_pi<float>()) CameraPitchAngle -= glm::two_pi<float>();
-        if (CameraPitchAngle < 0.0f) CameraPitchAngle += glm::two_pi<float>();
-
-
-
-        // Orbit camera around airplane
-        const float TurnRad = 1.0f;
-        float camX = sin(CameraAngle) * cos(CameraPitchAngle) * TurnRad;
-        float camY = sin(CameraPitchAngle) * TurnRad;
-        float camZ = cos(CameraAngle) * cos(CameraPitchAngle) * TurnRad;
-
-        CameraOffset.x = AirPlanePos.x + camX;
-        CameraOffset.y = AirPlanePos.y + camY + 0.3f;
-        CameraOffset.z = AirPlanePos.z + camZ;
-
-        // Move airplane forward and apply gravity
-        AirPlanePos.y -= Gravity * deltaTime;
-        AirPlanePos.x += -sin(CameraAngle) * cos(CameraPitchAngle) * FlyingSpeed * deltaTime;
-        AirPlanePos.y += -sin(CameraPitchAngle) * FlyingSpeed * deltaTime;
-        AirPlanePos.z += -cos(CameraAngle) * cos(CameraPitchAngle) * FlyingSpeed * deltaTime;
-
         processInput(window);
 
         // Clear Buffers
@@ -245,61 +155,25 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
-        glm::mat4 view;
-        view = glm::lookAt(CameraOffset,
-                            AirPlanePos,
-                            glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 view = camera.GetViewMatrix();
 
         // ========== Lighting Pass ==========
         glUseProgram(lightingShader);
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(camera.Position));
-        
-        glm::mat4 modelAirplane = glm::mat4(1.0f);
-
-        modelAirplane = glm::translate(modelAirplane, AirPlanePos);  // move up/down
-        modelAirplane = glm::rotate(modelAirplane, CameraAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-        modelAirplane = glm::rotate(modelAirplane, -CameraPitchAngle, glm::vec3(1.0f, 0.0f, 0.0f)); // pitch
-
-        if (TurnLeft) {
-            modelAirplane = transformer.RotMeshZ(modelAirplane, -PlaneRoll);
-        }
-        if (TurnRight) {
-            modelAirplane = transformer.RotMeshZ(modelAirplane, PlaneRoll);
-        }
-        
-        modelAirplane = transformer.ScaleMeshComb(modelAirplane, 0.15f);
-
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelAirplane));
-
-        // Render Cube
-        AirPlane.Render(lightingShader);
-
-        glm::mat4 modelTestLevel = glm::mat4(1.0f);
-
-        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -10.0f, 0.0f));  // move up/down
-        modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
-
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
-
-
-        TestLevel.Render(lightingShader);
 
         glUniform1f(glGetUniformLocation(lightingShader, "FogIntensity"), FogIntensity);
         glUniform3f(glGetUniformLocation(lightingShader, "fogColor"), FogColor[0], FogColor[1], FogColor[2]);
 
-
         // Directional light
-        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.ambient"), 0.05f, 0.05f, 0.05f);
+        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.direction"), DirLightDirection[0], DirLightDirection[1], DirLightDirection[2]);
+        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.ambient"), DirLightAmbient[0], DirLightAmbient[1], DirLightAmbient[2]);
         glUniform3f(glGetUniformLocation(lightingShader, "dirLight.diffuse"), DirLightDiff[0], DirLightDiff[1], DirLightDiff[2]);
         glUniform3f(glGetUniformLocation(lightingShader, "dirLight.specular"), DirLightSpec[0], DirLightSpec[1], DirLightSpec[2]);
         glUniform1f(glGetUniformLocation(lightingShader, "dirIntensity"), DirLightIntensity);
-
 
         // Point lights
         for (int i = 0; i < 4; i++) {
@@ -313,7 +187,7 @@ int main() {
             glUniform1f(glGetUniformLocation(lightingShader, (base + ".quadratic").c_str()), 0.032f);
         }
 
-        // Spotlight (flashlight)
+        // Spotlight
         glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.position"), 1, &camera.Position[0]);
         glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.direction"), 1, &camera.Front[0]);
         glUniform3f(glGetUniformLocation(lightingShader, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
@@ -325,29 +199,38 @@ int main() {
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
 
+        glm::mat4 modelTestLevel = glm::mat4(1.0f);
+        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -1.5f, 0.0f));
+        modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
+
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
+
+        TestLevel.Render(lightingShader);
+
         if (skyBoxOn) {
             skybox.Render(view, projection);
         }
 
-
-        ImGui::Begin("Hehe, me is window");
+        ImGui::Begin("Scene Controls");
         ImGui::Checkbox("Skybox?", &skyBoxOn);
         ImGui::ColorEdit4("Sky Color", ScreenColor);
         ImGui::Text("Directional Light");
+        ImGui::SliderFloat3("Directional Light Direction", DirLightDirection, -1.0f, 1.0f);
+        ImGui::ColorEdit3("Directional Light Ambient", DirLightAmbient);
         ImGui::ColorEdit3("Directional Light Specular", DirLightSpec);
         ImGui::ColorEdit3("Directional Light Diffuse", DirLightDiff);
         ImGui::SliderFloat("Dir Light Intensity", &DirLightIntensity, 0.1f, 50.0f);
-        ImGui::Text("Point Light");
+        /*ImGui::Text("Point Light");
         ImGui::ColorEdit3("Point Light Specular", PointLightSpec);
         ImGui::ColorEdit3("Point Light Diffuse", PointLightDiff);
         ImGui::Text("Spot Light");
         ImGui::ColorEdit3("Spot Light Specular", SpotLightSpec);
         ImGui::ColorEdit3("Spot Light Diffuse", SpotLightDiff);
         ImGui::SliderFloat("Inner Cut Off", &SpotlightInnerCutoff, 3.0f, 20.0f);
-        ImGui::SliderFloat("Inner Outer Off", &SpotlightOuterCutoff, 5.0f, 25.0f);
+        ImGui::SliderFloat("Outer Cut Off", &SpotlightOuterCutoff, 5.0f, 25.0f);
         ImGui::Text("Fog");
-        ImGui::SliderFloat("Fog Intensity", &FogIntensity, 0.1f, 5.0f);
-        ImGui::ColorEdit3("Fog Color", FogColor);
+        ImGui::SliderFloat("Fog Intensity", &FogIntensity, 0.1f, 10.0f);
+        ImGui::ColorEdit3("Fog Color", FogColor);*/
         ImGui::End();
 
         ImGui::Render();
@@ -363,11 +246,10 @@ int main() {
     ImGui::DestroyContext();
 
     // ================== Cleanup ==================
-    skybox.Cleanup();  // or remove if relying on destructor
-    AirPlane.Cleanup();
+    skybox.Cleanup();
     TestLevel.Cleanup();
     glDeleteProgram(lightingShader);
-    glDeleteProgram(lampShader);
+    glDeleteProgram(skyboxShader);
 
     glfwTerminate();
     return 0;

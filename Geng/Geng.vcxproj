@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>A:\AbdullahWork\OpenGLDirectory\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>A:\AbdullahWork\OpenGLDirectory\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -108,12 +108,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>A:\AbdullahWork\OpenGLDirectory\Include\glm;A:\AbdullahWork\OpenGLDirectory\Include;A:\AbdullahWork\GraphicsEng\Geng\imgui;A:\AbdullahWork\OpenGLDirectory\Include\json;A:\AbdullahWork\OpenGLDirectory\Include\OBJLoad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Include\glm;F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Include;F:\Abdullah\Geng\imgui;F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Include\json;F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Include\OBJLoad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>A:\AbdullahWork\OpenGLDirectory\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>F:\Abdullah\OpenGLDirectory\OpenGLDirectory\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -125,14 +125,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>A:\AbdullahWork\GraphicsEng\Geng\Geng\libs\Include\glm;A:\AbdullahWork\GraphicsEng\Geng\Geng\libs\Include;A:\AbdullahWork\GraphicsEng\Geng\imgui;A:\AbdullahWork\GraphicsEng\Geng\Geng\libs\Include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Abdullah\Geng\Geng\libs\Include\glm;F:\Abdullah\Geng\Geng\libs\Include;F:\Abdullah\Geng\imgui;F:\Abdullah\Geng\Geng\libs\Include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>A:\AbdullahWork\GraphicsEng\Geng\Geng\libs\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>F:\Abdullah\Geng\Geng\libs\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -155,7 +155,6 @@
     <ClCompile Include="Transformations.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\OpenGLDirectory\Include\stb_image.h" />
     <ClInclude Include="..\imgui\imconfig.h" />
     <ClInclude Include="..\imgui\imgui.h" />
     <ClInclude Include="..\imgui\imgui_impl_glfw.h" />
@@ -168,6 +167,7 @@
     <ClInclude Include="..\imgui\imstb_truetype.h" />
     <ClInclude Include="CallBacks.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="libs\Include\stb_image.h" />
     <ClInclude Include="model_loader.h" />
     <ClInclude Include="shaders.h" />
     <ClInclude Include="shader_utils.h" />
