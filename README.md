@@ -60,10 +60,9 @@ Skybox toggle
 **Dear ImGui (debug interface)**
 
 # 📂 Project Status
+  🚧 Work-in-progress:
 
-# 🚧 Work-in-progress: Development is currently paused, but the groundwork for a small graphics engine is laid out.
-
-# Future work (if resumed) may include:
+# Future additions may include but not limited to:
 
 **Shadow mapping**
 
