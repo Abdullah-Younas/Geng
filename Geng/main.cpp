@@ -87,7 +87,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && !Jumping)
     {
-		verticalVelocity = jumpForce;
+        verticalVelocity = jumpForce;
         Jumping = true;
     }
 }
@@ -149,6 +149,9 @@ int main() {
 
     glUseProgram(lightingShader);
 
+
+
+	// ================== ImGui Setup ==================
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -165,6 +168,7 @@ int main() {
         processInput(window);
 
 
+
         // Clear Buffers
         glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -174,6 +178,8 @@ int main() {
         ImGui::NewFrame();
 
 
+
+        //Handle player movement
         verticalVelocity += gravity * deltaTime;
         camera.Position.y += verticalVelocity * deltaTime;
         camera.UpdateSpeed(5.5f);
@@ -185,9 +191,14 @@ int main() {
             Jumping = false;
             camera.UpdateSpeed(6.5f);
         }
+        
+
+
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
+
+
 
         // ========== Lighting Pass ==========
         glUseProgram(lightingShader);
@@ -229,20 +240,26 @@ int main() {
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
 
+
+
+		// Render Test Level
         glm::mat4 modelTestLevel = glm::mat4(1.0f);
         modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -1.5f, 0.0f));
         modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
-
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
-
         TestLevel.Render(lightingShader);
         glUseProgram(lightingShader);
 
 
+
+		// ========== Skybox Pass ==========
         if (skyBoxOn) {
             skybox.Render(view, projection);
         }
 
+
+
+		// ========== ImGui Frame ==========
         ImGui::Begin("Scene Controls");
         ImGui::Checkbox("Skybox?", &skyBoxOn);
         ImGui::ColorEdit4("Sky Color", ScreenColor);
