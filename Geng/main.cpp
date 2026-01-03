@@ -56,7 +56,7 @@ bool Jumping = false;
 bool skyBoxOn = true;
 
 float verticalVelocity = 0.0f;
-const float gravity = -12.8f;
+const float gravity = -14.0f;
 const float jumpForce = 7.0f;
 
 Camera camera(glm::vec3(0.0f, 0.25f, 1.0f));
@@ -68,14 +68,15 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+    // Gather all movement input
+    bool forward = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
+    bool backward = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
+    bool left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
+    bool right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
+
+    // Process all movement at once
+    camera.ProcessKeyboard(forward, backward, left, right, deltaTime);
+
     if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
@@ -175,7 +176,7 @@ int main() {
 
         verticalVelocity += gravity * deltaTime;
         camera.Position.y += verticalVelocity * deltaTime;
-        camera.UpdateSpeed(4.5f);
+        camera.UpdateSpeed(5.5f);
 
         if (camera.Position.y <= 0.0f)
         {
