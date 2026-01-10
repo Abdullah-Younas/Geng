@@ -1,5 +1,4 @@
 // ================== Includes ==================
-//lol
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -28,6 +27,7 @@ using namespace std;
 #include "model_loader.h"
 #include "Skybox.h"
 #include "TextureImage.h"
+#include "Sphere.h"
 
 // ================== Globals ==================
 float deltaTime = 0.0f;
@@ -53,7 +53,9 @@ float FogIntensity = 1.04f;
 float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
 bool Jumping = false;
+int JumpCount = 0;
 bool skyBoxOn = true;
+bool showSphere = true;
 
 float verticalVelocity = 0.0f;
 const float gravity = -14.0f;
@@ -63,18 +65,20 @@ Camera camera(glm::vec3(0.0f, 0.25f, 1.0f));
 Transformations transformer;
 Model TestLevel;
 
+// Sphere properties
+glm::vec3 spherePosition(0.0f, 0.0f, -3.0f);
+float sphereScale = 1.0f;
+
 // ================== Input Handling ==================
 void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    // Gather all movement input
     bool forward = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
     bool backward = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
     bool left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
     bool right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
 
-    // Process all movement at once
     camera.ProcessKeyboard(forward, backward, left, right, deltaTime);
 
     if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
@@ -85,10 +89,10 @@ void processInput(GLFWwindow* window) {
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && !Jumping)
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && JumpCount < 2)
     {
         verticalVelocity = jumpForce;
-        Jumping = true;
+        JumpCount++;
     }
 }
 
@@ -147,11 +151,44 @@ int main() {
     };
     Skybox skybox(faces, skyboxShader);
 
+    // ================== Sphere Setup ==================
+    Sphere sphere(1.0f, 36, 18, true);
+
+    GLuint sphereVAO, sphereVBO, sphereIBO;
+    glGenVertexArrays(1, &sphereVAO);
+    glBindVertexArray(sphereVAO);
+
+    glGenBuffers(1, &sphereVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+    glBufferData(GL_ARRAY_BUFFER, sphere.getInterleavedVertexSize(),
+        sphere.getInterleavedVertices(), GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sphereIBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphere.getIndexSize(),
+        sphere.getIndices(), GL_STATIC_DRAW);
+
+    int stride = sphere.getInterleavedStride();
+
+    // Position attribute
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+
+    // Normal attribute
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(float) * 3));
+
+    // Texture coordinate attribute
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(float) * 6));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     glUseProgram(lightingShader);
 
-
-
-	// ================== ImGui Setup ==================
+    // ================== ImGui Setup ==================
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -167,8 +204,6 @@ int main() {
 
         processInput(window);
 
-
-
         // Clear Buffers
         glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -176,8 +211,6 @@ int main() {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
-
 
         //Handle player movement
         verticalVelocity += gravity * deltaTime;
@@ -188,17 +221,13 @@ int main() {
         {
             camera.Position.y = 0.0f;
             verticalVelocity = 0.0f;
-            Jumping = false;
+            JumpCount = 0;
             camera.UpdateSpeed(6.5f);
         }
-        
-
 
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
-
-
 
         // ========== Lighting Pass ==========
         glUseProgram(lightingShader);
@@ -240,9 +269,7 @@ int main() {
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
         glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
 
-
-
-		// Render Test Level
+        // Render Test Level
         glm::mat4 modelTestLevel = glm::mat4(1.0f);
         modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -1.5f, 0.0f));
         modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
@@ -250,36 +277,42 @@ int main() {
         TestLevel.Render(lightingShader);
         glUseProgram(lightingShader);
 
+        // ========== Render Sphere ==========
+        if (showSphere) {
+            glm::mat4 modelSphere = glm::mat4(1.0f);
+            modelSphere = glm::translate(modelSphere, spherePosition);
+            modelSphere = glm::scale(modelSphere, glm::vec3(sphereScale));
 
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelSphere));
 
-		// ========== Skybox Pass ==========
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_TRIANGLES, sphere.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
+            glBindVertexArray(0);
+        }
+
+        // ========== Skybox Pass ==========
         if (skyBoxOn) {
             skybox.Render(view, projection);
         }
 
-
-
-		// ========== ImGui Frame ==========
+        // ========== ImGui Frame ==========
         ImGui::Begin("Scene Controls");
         ImGui::Checkbox("Skybox?", &skyBoxOn);
         ImGui::ColorEdit4("Sky Color", ScreenColor);
+
+        ImGui::Separator();
+        ImGui::Text("Sphere Controls");
+        ImGui::Checkbox("Show Sphere", &showSphere);
+        ImGui::SliderFloat3("Sphere Position", &spherePosition[0], -10.0f, 10.0f);
+        ImGui::SliderFloat("Sphere Scale", &sphereScale, 0.1f, 5.0f);
+
+        ImGui::Separator();
         ImGui::Text("Directional Light");
         ImGui::SliderFloat3("Directional Light Direction", DirLightDirection, -1.0f, 1.0f);
         ImGui::ColorEdit3("Directional Light Ambient", DirLightAmbient);
         ImGui::ColorEdit3("Directional Light Specular", DirLightSpec);
         ImGui::ColorEdit3("Directional Light Diffuse", DirLightDiff);
         ImGui::SliderFloat("Dir Light Intensity", &DirLightIntensity, 0.1f, 50.0f);
-        /*ImGui::Text("Point Light");
-        ImGui::ColorEdit3("Point Light Specular", PointLightSpec);
-        ImGui::ColorEdit3("Point Light Diffuse", PointLightDiff);
-        ImGui::Text("Spot Light");
-        ImGui::ColorEdit3("Spot Light Specular", SpotLightSpec);
-        ImGui::ColorEdit3("Spot Light Diffuse", SpotLightDiff);
-        ImGui::SliderFloat("Inner Cut Off", &SpotlightInnerCutoff, 3.0f, 20.0f);
-        ImGui::SliderFloat("Outer Cut Off", &SpotlightOuterCutoff, 5.0f, 25.0f);
-        ImGui::Text("Fog");
-        ImGui::SliderFloat("Fog Intensity", &FogIntensity, 0.1f, 10.0f);
-        ImGui::ColorEdit3("Fog Color", FogColor);*/
         ImGui::End();
 
         ImGui::Render();
@@ -295,8 +328,11 @@ int main() {
     ImGui::DestroyContext();
 
     // ================== Cleanup ==================
+    glDeleteVertexArrays(1, &sphereVAO);
+    glDeleteBuffers(1, &sphereVBO);
+    glDeleteBuffers(1, &sphereIBO);
+
     skybox.Cleanup();
-    //TestLevel.Cleanup();
     glDeleteProgram(lightingShader);
     glDeleteProgram(skyboxShader);
 
