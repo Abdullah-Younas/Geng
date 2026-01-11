@@ -35,14 +35,19 @@ public:
     void Jump();
     void Update(float deltaTime);
 
+    // Collision response methods (call these from main)
+    void SetSpherePosition(const glm::vec3& newPosition);
+    void MoveSphere(const glm::vec3& delta);
+
     // Getters
     glm::vec3 GetPosition() const { return camera.Position; }
+    glm::vec3 GetSpherePosition() const { return spherePosition; }
     glm::vec3 GetFront() const { return camera.Front; }
     glm::mat4 GetViewMatrix() { return camera.GetViewMatrix(); }
     float GetZoom() const { return camera.Zoom; }
 
 private:
-    void UpdateSpherePosition();
+    void UpdateCameraFromSphere();  // Changed from UpdateSpherePosition
     void ApplyGravity(float deltaTime);
     void CheckGroundCollision();
 };
