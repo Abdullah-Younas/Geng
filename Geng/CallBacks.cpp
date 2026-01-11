@@ -2,7 +2,8 @@
 #include <glad/glad.h>
 #include "CallBacks.h"
 #include "Camera.h"
-
+#include "Player.h"
+extern Player player; // Make sure this player is declared externally
 extern Camera camera; // Make sure this camera is declared externally
 
 float lastX = 1920.0f / 2.0f;
@@ -21,9 +22,9 @@ void CallBacks::mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     lastX = float(xpos);
     lastY = float(ypos);
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    player.camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void CallBacks::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    camera.ProcessMouseScroll((float)yoffset);
+    player.camera.ProcessMouseScroll((float)yoffset);
 }

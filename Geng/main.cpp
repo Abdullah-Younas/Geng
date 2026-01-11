@@ -19,15 +19,21 @@
 #include <Windows.h>
 using namespace std;
 
+
 #include "shader_utils.h"
 #include "shaders.h"
-#include "Camera.h"
+#include "Player.h"
+
+//Made this player global for the Callbacks
+Player player(glm::vec3(0.0f, 0.25f, 1.0f));
+
 #include "Transformations.h"
 #include "CallBacks.h"
 #include "model_loader.h"
 #include "Skybox.h"
 #include "TextureImage.h"
 #include "Sphere.h"
+#include "LevelCollision.h"
 
 // ================== Globals ==================
 float deltaTime = 0.0f;
@@ -52,22 +58,16 @@ float SpotlightOuterCutoff = 12.0f;
 float FogIntensity = 1.04f;
 float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
-bool Jumping = false;
-int JumpCount = 0;
 bool skyBoxOn = true;
 bool showSphere = true;
 
-float verticalVelocity = 0.0f;
-const float gravity = -14.0f;
-const float jumpForce = 7.0f;
-
-Camera camera(glm::vec3(0.0f, 0.25f, 1.0f));
 Transformations transformer;
 Model TestLevel;
+LevelCollision levelCollision;
 
-// Sphere properties
-glm::vec3 spherePosition(0.0f, 0.0f, -3.0f);
-float sphereScale = 1.0f;
+//Debugging the collisions box
+bool showCollisionBoxes = false;
+unsigned int debugShader = 0;
 
 // ================== Input Handling ==================
 void processInput(GLFWwindow* window) {
@@ -79,7 +79,7 @@ void processInput(GLFWwindow* window) {
     bool left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
     bool right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
 
-    camera.ProcessKeyboard(forward, backward, left, right, deltaTime);
+    player.ProcessKeyboard(forward, backward, left, right, deltaTime);
 
     if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -89,11 +89,56 @@ void processInput(GLFWwindow* window) {
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && JumpCount < 2)
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
-        verticalVelocity = jumpForce;
-        JumpCount++;
+        player.Jump();
     }
+}
+
+void RenderDebugBox(const BoundingBox& box, unsigned int shader, const glm::mat4& view, const glm::mat4& projection) {
+    float vertices[] = {
+        box.min.x, box.min.y, box.min.z,
+        box.max.x, box.min.y, box.min.z,
+        box.max.x, box.max.y, box.min.z,
+        box.min.x, box.max.y, box.min.z,
+        box.min.x, box.min.y, box.max.z,
+        box.max.x, box.min.y, box.max.z,
+        box.max.x, box.max.y, box.max.z,
+        box.min.x, box.max.y, box.max.z
+    };
+
+    unsigned int indices[] = {
+        0,1, 1,2, 2,3, 3,0, // front
+        4,5, 5,6, 6,7, 7,4, // back
+        0,4, 1,5, 2,6, 3,7  // connecting
+    };
+
+    static GLuint VAO = 0, VBO, EBO;
+    if (VAO == 0) {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+    }
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glUseProgram(shader);
+    glm::mat4 model = glm::mat4(1.0f);
+    glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform3f(glGetUniformLocation(shader, "debugColor"), 0.0f, 1.0f, 0.0f);
+
+    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
 
 // ================== Main ==================
@@ -140,6 +185,7 @@ int main() {
     // ================== Shaders ==================
     unsigned int lightingShader = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
     unsigned int skyboxShader = createShaderProgram(CubeMapVShader, CubeMapFShader);
+	unsigned int debugShader = createShaderProgram(debugVertexShader, debugFragmentShader);
 
     std::vector<std::string> faces = {
         "right.jpg",
@@ -212,28 +258,35 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        //Handle player movement
-        verticalVelocity += gravity * deltaTime;
-        camera.Position.y += verticalVelocity * deltaTime;
-        camera.UpdateSpeed(5.5f);
+        // Update player (handles movement, gravity, collisions)
+        player.Update(deltaTime);
 
-        if (camera.Position.y <= 0.0f)
-        {
-            camera.Position.y = 0.0f;
-            verticalVelocity = 0.0f;
-            JumpCount = 0;
-            camera.UpdateSpeed(6.5f);
+		CollisionResult collision = levelCollision.CheckSphereCollisionDetailed(player.sphereCenter, player.sphereScale);
+
+        if (collision.collided) {
+            std::cout << "========== COLLISION DETECTED ==========" << std::endl;
+            std::cout << "Mesh Name: " << collision.meshName << std::endl;
+            std::cout << "Collision Point: ("
+                << collision.collisionPoint.x << ", "
+                << collision.collisionPoint.y << ", "
+                << collision.collisionPoint.z << ")" << std::endl;
+            std::cout << "Collision Normal: ("
+                << collision.collisionNormal.x << ", "
+                << collision.collisionNormal.y << ", "
+                << collision.collisionNormal.z << ")" << std::endl;
+            std::cout << "Penetration Depth: " << collision.penetrationDepth << std::endl;
+            std::cout << "========================================" << std::endl;
         }
-
+        
         // Matrices
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1980.0f / 1080.0f, 0.01f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1980.0f / 1080.0f, 0.01f, 100.0f);
+        glm::mat4 view = player.GetViewMatrix();
 
         // ========== Lighting Pass ==========
         glUseProgram(lightingShader);
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(camera.Position));
+        glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(player.GetPosition()));
 
         glUniform1f(glGetUniformLocation(lightingShader, "FogIntensity"), FogIntensity);
         glUniform3f(glGetUniformLocation(lightingShader, "fogColor"), FogColor[0], FogColor[1], FogColor[2]);
@@ -258,8 +311,8 @@ int main() {
         }
 
         // Spotlight
-        glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.position"), 1, &camera.Position[0]);
-        glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.direction"), 1, &camera.Front[0]);
+        glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.position"), 1, glm::value_ptr(player.GetPosition()));
+        glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.direction"), 1, glm::value_ptr(player.GetFront()));
         glUniform3f(glGetUniformLocation(lightingShader, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
         glUniform3f(glGetUniformLocation(lightingShader, "spotLight.diffuse"), SpotLightDiff[0], SpotLightDiff[1], SpotLightDiff[2]);
         glUniform3f(glGetUniformLocation(lightingShader, "spotLight.specular"), SpotLightSpec[0], SpotLightSpec[1], SpotLightSpec[2]);
@@ -273,6 +326,8 @@ int main() {
         glm::mat4 modelTestLevel = glm::mat4(1.0f);
         modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -1.5f, 0.0f));
         modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
+		levelCollision.BuildFromModel(TestLevel, modelTestLevel);
+
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
         TestLevel.Render(lightingShader);
         glUseProgram(lightingShader);
@@ -280,14 +335,29 @@ int main() {
         // ========== Render Sphere ==========
         if (showSphere) {
             glm::mat4 modelSphere = glm::mat4(1.0f);
-            modelSphere = glm::translate(modelSphere, spherePosition);
-            modelSphere = glm::scale(modelSphere, glm::vec3(sphereScale));
+            modelSphere = glm::translate(modelSphere, player.spherePosition);
+            modelSphere = glm::scale(modelSphere, glm::vec3(player.sphereScale));
 
             glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelSphere));
 
             glBindVertexArray(sphereVAO);
             glDrawElements(GL_TRIANGLES, sphere.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
             glBindVertexArray(0);
+        }
+
+        // ========== Debug Collision Boxes ==========
+        if (showCollisionBoxes) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDisable(GL_DEPTH_TEST); // Draw on top
+
+            auto boxes = levelCollision.GetBoundingBoxes();
+            for (const auto& box : boxes) {
+                RenderDebugBox(box, debugShader, view, projection);
+            }
+
+            glEnable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
         }
 
         // ========== Skybox Pass ==========
@@ -303,8 +373,6 @@ int main() {
         ImGui::Separator();
         ImGui::Text("Sphere Controls");
         ImGui::Checkbox("Show Sphere", &showSphere);
-        ImGui::SliderFloat3("Sphere Position", &spherePosition[0], -10.0f, 10.0f);
-        ImGui::SliderFloat("Sphere Scale", &sphereScale, 0.1f, 5.0f);
 
         ImGui::Separator();
         ImGui::Text("Directional Light");
@@ -313,6 +381,22 @@ int main() {
         ImGui::ColorEdit3("Directional Light Specular", DirLightSpec);
         ImGui::ColorEdit3("Directional Light Diffuse", DirLightDiff);
         ImGui::SliderFloat("Dir Light Intensity", &DirLightIntensity, 0.1f, 50.0f);
+
+        ImGui::Separator();
+        ImGui::Text("Camera Position:");
+        ImGui::Text("X: %.2f", player.GetPosition().x);
+        ImGui::Text("Y: %.2f", player.GetPosition().y);
+        ImGui::Text("Z: %.2f", player.GetPosition().z);
+
+        ImGui::Text("Sphere/Center of Sphere Position:");
+        ImGui::Text("X: %.2f", player.sphereCenter.x);
+        ImGui::Text("Y: %.2f", player.sphereCenter.y);
+        ImGui::Text("Z: %.2f", player.sphereCenter.z);
+
+        ImGui::Separator();
+        ImGui::Text("Debug Visualization");
+        ImGui::Checkbox("Show Collision Boxes", &showCollisionBoxes);
+
         ImGui::End();
 
         ImGui::Render();

@@ -5,7 +5,7 @@
 
 glm::mat4 Transformations::RotMeshX(glm::mat4 trans, float RotValue) {
     return glm::rotate(trans, glm::radians(-RotValue), glm::vec3(1.0, 0.0, 0.0));
-}
+}   
 glm::mat4 Transformations::RotMeshY(glm::mat4 trans, float RotValue) {
     return glm::rotate(trans, glm::radians(-RotValue), glm::vec3(0.0, 1.0, 0.0));
 }

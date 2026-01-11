@@ -28,6 +28,21 @@
     <Filter Include="Header Files\imgui">
       <UniqueIdentifier>{7f23d4f6-92e2-42c4-a1b8-822a71b8663c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Player">
+      <UniqueIdentifier>{ff8bf859-a283-4847-bae0-82c772c254da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Collisions">
+      <UniqueIdentifier>{5f217d61-35c5-4a9b-a95f-9b3a0e76c499}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Objects">
+      <UniqueIdentifier>{88b737a4-6360-4135-a98a-fa5c7d9f2f00}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\CustomTransforms">
+      <UniqueIdentifier>{698226b0-8389-46fb-81ea-eb3114aeb5d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ModelLoader">
+      <UniqueIdentifier>{6179b40c-408a-4987-baef-b33af75143e0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="shader_utils.cpp">
@@ -35,9 +50,6 @@
     </ClCompile>
     <ClCompile Include="TextureImage.cpp">
       <Filter>Source Files\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Transformations.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CallBacks.cpp">
       <Filter>Source Files</Filter>
@@ -66,20 +78,29 @@
     <ClCompile Include="..\imgui\imgui_impl_opengl2.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="model_loader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Skybox.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Source Files\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelCollision.cpp">
+      <Filter>Source Files\Collisions</Filter>
+    </ClCompile>
     <ClCompile Include="Sphere.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Skybox.cpp">
+      <Filter>Source Files\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Transformations.cpp">
+      <Filter>Source Files\CustomTransforms</Filter>
+    </ClCompile>
+    <ClCompile Include="model_loader.cpp">
+      <Filter>Source Files\ModelLoader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -140,8 +161,14 @@
     <ClInclude Include="libs\Include\stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Source Files\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelCollision.h">
+      <Filter>Source Files\Collisions</Filter>
+    </ClInclude>
     <ClInclude Include="Sphere.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Objects</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
