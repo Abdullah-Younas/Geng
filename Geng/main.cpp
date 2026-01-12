@@ -264,6 +264,7 @@ int main() {
 		CollisionResult collision = levelCollision.CheckSphereCollisionDetailed(player.sphereCenter, player.sphereScale);
 
         if (collision.collided) {
+            /*
             std::cout << "========== COLLISION DETECTED ==========" << std::endl;
             std::cout << "Mesh Name: " << collision.meshName << std::endl;
             std::cout << "Collision Point: ("
@@ -276,6 +277,14 @@ int main() {
                 << collision.collisionNormal.z << ")" << std::endl;
             std::cout << "Penetration Depth: " << collision.penetrationDepth << std::endl;
             std::cout << "========================================" << std::endl;
+            */
+
+            glm::vec3 Ppos = player.GetPosition();
+            glm::vec3 Pvel = player.GetVelocity();
+            int depth = collision.penetrationDepth;
+
+            glm::vec3 temp = player.CollideAndSlide(Pvel, Ppos, depth);
+            std::cout << "Collision response: " << temp.y << std::endl;
         }
         
         // Matrices

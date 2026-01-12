@@ -13,6 +13,9 @@ public:
     glm::vec3 spherePosition;
     glm::vec3 sphereCenter;
     float sphereScale;
+    glm::vec3 collisionResponse;
+    int maxBounces;
+    float skinWidth;
 
     // Movement properties
     float verticalVelocity;
@@ -44,12 +47,16 @@ public:
     glm::vec3 GetSpherePosition() const { return spherePosition; }
     glm::vec3 GetFront() const { return camera.Front; }
     glm::mat4 GetViewMatrix() { return camera.GetViewMatrix(); }
+    glm::vec3 GetVelocity() const;
     float GetZoom() const { return camera.Zoom; }
+
+	glm::vec3 CollideAndSlide(glm::vec3 vel, glm::vec3 pos, int depth);  // New method for collision response
 
 private:
     void UpdateCameraFromSphere();  // Changed from UpdateSpherePosition
     void ApplyGravity(float deltaTime);
     void CheckGroundCollision();
+    glm::vec3 velocity;
 };
 
 #endif // PLAYER_H

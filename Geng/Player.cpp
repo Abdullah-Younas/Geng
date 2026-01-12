@@ -1,4 +1,7 @@
 #include "Player.h"
+//#include "Transformations.h"
+
+//Transformations transformer;
 
 Player::Player(const glm::vec3& startPosition)
     : camera(startPosition),
@@ -7,18 +10,20 @@ Player::Player(const glm::vec3& startPosition)
     sphereScale(0.15f),
     verticalVelocity(0.0f),
     jumpCount(0),
-    isJumping(false)
+    isJumping(false),
+    collisionResponse(0.15, 0.26, 0.21),
+    maxBounces(5),
+    skinWidth(0.015f),
+    velocity(0.0f, 0.0f, 0.0f)  // Initialize it
 {
     // Camera follows sphere from the start
     UpdateCameraFromSphere();
 }
 
 void Player::ProcessKeyboard(bool forward, bool backward, bool left, bool right, float deltaTime) {
-    // Move the sphere instead of the camera directly
     glm::vec3 front = camera.Front;
     glm::vec3 rightVec = camera.Right;
 
-    // Project onto horizontal plane (ignore Y component for movement)
     front.y = 0.0f;
     rightVec.y = 0.0f;
     front = glm::normalize(front);
@@ -26,18 +31,22 @@ void Player::ProcessKeyboard(bool forward, bool backward, bool left, bool right,
 
     float speed = camera.MovementSpeed * deltaTime;
 
+    velocity = glm::vec3(0.0f);  // Reset horizontal velocity
+
     if (forward)
-        spherePosition += front * speed;
+        velocity += front * speed;
     if (backward)
-        spherePosition -= front * speed;
+        velocity -= front * speed;
     if (left)
-        spherePosition -= rightVec * speed;
+        velocity -= rightVec * speed;
     if (right)
-        spherePosition += rightVec * speed;
+        velocity += rightVec * speed;
 
+    velocity.y = verticalVelocity;  // Keep vertical velocity
+
+    spherePosition += velocity;
     sphereCenter = spherePosition;
-
-	camera.ProcessKeyboard(forward, backward, left, right, deltaTime);
+    camera.ProcessKeyboard(forward, backward, left, right, deltaTime);
 }
 
 void Player::Jump() {
@@ -92,4 +101,26 @@ void Player::MoveSphere(const glm::vec3& delta) {
     spherePosition += delta;
     sphereCenter += delta;
     UpdateCameraFromSphere();
+}
+
+glm::vec3 Player::CollideAndSlide(glm::vec3 vel, glm::vec3 pos, int depth) {
+    if (depth >= maxBounces) {
+        return glm::vec3(0.0f);
+    }
+
+    float dist = glm::length(vel) + skinWidth;
+    glm::vec3  snapToSurface = glm::normalize(vel) * (dist - skinWidth);
+    glm::vec3 leftover = vel - snapToSurface;
+
+    if (glm::length(snapToSurface) <= skinWidth) {
+        snapToSurface = glm::vec3(0.0f);
+    }
+
+    float mag = glm::length(leftover);
+    // leftover = transformer.ProjectOnPlane(leftover, Normal of hit); then normalize this whole projectonplane
+    //furtheron
+}
+
+glm::vec3 Player::GetVelocity() const {
+    return velocity;
 }
