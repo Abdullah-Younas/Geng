@@ -279,12 +279,13 @@ int main() {
             std::cout << "========================================" << std::endl;
             */
 
-            glm::vec3 Ppos = player.GetPosition();
-            glm::vec3 Pvel = player.GetVelocity();
             int depth = collision.penetrationDepth;
 
-            glm::vec3 temp = player.CollideAndSlide(Pvel, Ppos, depth);
-            std::cout << "Collision response: " << temp.y << std::endl;
+			player.passCollisionData(depth);
+            player.Colliding = true;
+        }
+        else {
+            player.Colliding = false;
         }
         
         // Matrices

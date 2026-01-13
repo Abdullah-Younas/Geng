@@ -16,6 +16,8 @@ public:
     glm::vec3 collisionResponse;
     int maxBounces;
     float skinWidth;
+    bool Colliding;
+    int collisionDepth;
 
     // Movement properties
     float verticalVelocity;
@@ -41,6 +43,7 @@ public:
     // Collision response methods (call these from main)
     void SetSpherePosition(const glm::vec3& newPosition);
     void MoveSphere(const glm::vec3& delta);
+	void passCollisionData(int depth);
 
     // Getters
     glm::vec3 GetPosition() const { return camera.Position; }
@@ -50,7 +53,7 @@ public:
     glm::vec3 GetVelocity() const;
     float GetZoom() const { return camera.Zoom; }
 
-	glm::vec3 CollideAndSlide(glm::vec3 vel, glm::vec3 pos, int depth);  // New method for collision response
+	glm::vec3 CollideAndSlide();  // New method for collision response
 
 private:
     void UpdateCameraFromSphere();  // Changed from UpdateSpherePosition
