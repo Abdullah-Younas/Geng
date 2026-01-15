@@ -146,6 +146,7 @@
     <ClCompile Include="..\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\imgui\imgui_widgets.cpp" />
     <ClCompile Include="CallBacks.cpp" />
+    <ClCompile Include="Formulas.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="LevelCollision.cpp" />
     <ClCompile Include="main.cpp" />
@@ -170,6 +171,7 @@
     <ClInclude Include="..\imgui\imstb_truetype.h" />
     <ClInclude Include="CallBacks.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Formulas.h" />
     <ClInclude Include="LevelCollision.h" />
     <ClInclude Include="libs\Include\stb_image.h" />
     <ClInclude Include="model_loader.h" />

@@ -102,6 +102,9 @@
     <ClCompile Include="model_loader.cpp">
       <Filter>Source Files\ModelLoader</Filter>
     </ClCompile>
+    <ClCompile Include="Formulas.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_utils.h">
@@ -169,6 +172,9 @@
     </ClInclude>
     <ClInclude Include="Sphere.h">
       <Filter>Source Files\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Formulas.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

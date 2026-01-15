@@ -1,4 +1,7 @@
 #include "Player.h"
+#include "Formulas.h"
+
+Formulas formulas;
 
 Player::Player(const glm::vec3& startPosition)
     : camera(startPosition),
@@ -10,11 +13,33 @@ Player::Player(const glm::vec3& startPosition)
     isJumping(false),
     collisionResponse(0.15, 0.26, 0.21),
     maxBounces(5),
-    skinWidth(0.015f),
+    skinWidth(0.0005f),
     velocity(0.0f, 0.0f, 0.0f),
     Colliding(false),
-    collisionDepth(0)
+    collisionDepth(0),
+    collisionNormal(0.0f, 0.0f, 0.0f),
+    intendedMovement(0.0f, 0.0f, 0.0f)
 {
+    UpdateCameraFromSphere();
+}
+
+void Player::CalculateMovement(float deltaTime) {
+    // Calculate gravity effect
+    verticalVelocity += GRAVITY * deltaTime;
+
+    // Build the intended movement vector (DON'T apply it yet!)
+    intendedMovement = glm::vec3(0.0f);
+    intendedMovement.y = verticalVelocity * deltaTime;
+
+    // Horizontal movement is already in velocity from ProcessKeyboard
+    intendedMovement.x = velocity.x;
+    intendedMovement.z = velocity.z;
+}
+
+void Player::ApplyMovement(const glm::vec3& movement) {
+    // Actually move the player
+    spherePosition += movement;
+    sphereCenter = spherePosition;
     UpdateCameraFromSphere();
 }
 
@@ -27,8 +52,6 @@ void Player::ProcessKeyboard(bool forward, bool backward, bool left, bool right,
     rightVec = glm::normalize(rightVec);
 
     float speed = camera.MovementSpeed * deltaTime;
-
-    // Build horizontal velocity only
     glm::vec3 horizontalVelocity = glm::vec3(0.0f);
 
     if (forward)
@@ -40,14 +63,9 @@ void Player::ProcessKeyboard(bool forward, bool backward, bool left, bool right,
     if (right)
         horizontalVelocity += rightVec * speed;
 
-    // Apply only horizontal movement here
-    spherePosition.x += horizontalVelocity.x;
-    spherePosition.z += horizontalVelocity.z;
-    sphereCenter = spherePosition;
-
-    // Store for GetVelocity (combine horizontal + vertical for external use)
+    // ONLY store velocity, DON'T move yet
     velocity = horizontalVelocity;
-    velocity.y = verticalVelocity;
+    // Don't set velocity.y here - it's managed by gravity
 
     camera.ProcessKeyboard(forward, backward, left, right, deltaTime);
 }
@@ -61,41 +79,22 @@ void Player::Jump() {
 }
 
 void Player::Update(float deltaTime) {
-    ApplyGravity(deltaTime);
-    CheckGroundCollision();
-    UpdateCameraFromSphere();
-}
-
-void Player::UpdateCameraFromSphere() {
-    camera.Position = spherePosition + glm::vec3(0.0f, 0.5f, 0.0f);
-}
-
-void Player::ApplyGravity(float deltaTime) {
-    verticalVelocity += GRAVITY * deltaTime;
-
-    // Apply vertical movement ONCE here
-    spherePosition.y += verticalVelocity * deltaTime;
-    sphereCenter.y = spherePosition.y;
-
-    // Update speed based on air/ground state
+    // Just update camera speed based on position
     if (spherePosition.y > GROUND_LEVEL) {
         camera.UpdateSpeed(AIR_SPEED);
     }
-}
-
-void Player::passCollisionData(int depth) {
-    collisionDepth = depth;
-}
-
-void Player::CheckGroundCollision() {
-    if (spherePosition.y <= GROUND_LEVEL) {
-        spherePosition.y = GROUND_LEVEL;
-        sphereCenter.y = GROUND_LEVEL;
-        verticalVelocity = 0.0f;
-        jumpCount = 0;
-        isJumping = false;
+    else {
         camera.UpdateSpeed(GROUND_SPEED);
     }
+}
+
+void Player::UpdateCameraFromSphere() {
+    camera.Position = spherePosition + glm::vec3(0.0f, 1.5f, 0.0f);
+}
+
+void Player::passCollisionData(int depth, glm::vec3& CollisionNormal) {
+    collisionDepth = depth;
+    collisionNormal = CollisionNormal;
 }
 
 void Player::SetSpherePosition(const glm::vec3& newPosition) {
@@ -110,31 +109,41 @@ void Player::MoveSphere(const glm::vec3& delta) {
     UpdateCameraFromSphere();
 }
 
-glm::vec3 Player::CollideAndSlide() {
-    glm::vec3 Pvelocity = GetVelocity();
-    glm::vec3 Pposition = GetPosition();
-
-    if (collisionDepth >= maxBounces) {
+glm::vec3 Player::CollideAndSlide(const glm::vec3& vel, int depth) {
+    if (depth >= maxBounces) {
         return glm::vec3(0.0f);
     }
 
-    float dist = glm::length(Pvelocity) + skinWidth;
+    float dist = glm::length(vel);
 
-    if (Colliding == true) {
-        glm::vec3 snapToSurface = glm::normalize(Pvelocity) * (dist - skinWidth);
-        glm::vec3 leftover = Pvelocity - snapToSurface;
-
-        if (glm::length(snapToSurface) <= skinWidth) {
-            snapToSurface = glm::vec3(0.0f);
-        }
-
-        float mag = glm::length(leftover);
-        // leftover = transformer.ProjectOnPlane(leftover, Normal of hit); then normalize this whole projectonplane
-        //furtheron
-        //return snapToSurface = CollideAndSlide(leftover, pos + snapToSurface, depth + 1);
+    // If velocity is too small, stop
+    if (dist < skinWidth * 0.01f) {
+        return glm::vec3(0.0f);
     }
 
-    return Pvelocity;
+    if (Colliding) {
+        // Calculate how far we can move before hitting
+        glm::vec3 moveDir = glm::normalize(vel);
+        float safeDistance = dist - skinWidth;
+
+        if (safeDistance < 0.0f) {
+            safeDistance = 0.0f;
+        }
+
+        glm::vec3 snapToSurface = moveDir * safeDistance;
+        glm::vec3 leftover = vel - snapToSurface;
+
+        // Project leftover onto the collision plane
+        glm::vec3 slidingVel = formulas.ProjectOnPlane(leftover, collisionNormal);
+
+        // Reduce magnitude slightly to prevent sliding into surfaces
+        slidingVel *= 0.95f;
+
+        // Return the safe movement plus any sliding movement
+        return snapToSurface + slidingVel;
+    }
+
+    return vel;
 }
 
 glm::vec3 Player::GetVelocity() const {

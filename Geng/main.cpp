@@ -258,35 +258,47 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Update player (handles movement, gravity, collisions)
-        player.Update(deltaTime);
+        // ====== STEP 1: Calculate intended movement ======
+        player.CalculateMovement(deltaTime);
+        glm::vec3 intendedMove = player.GetIntendedMovement();
 
-		CollisionResult collision = levelCollision.CheckSphereCollisionDetailed(player.sphereCenter, player.sphereScale);
+        // ====== STEP 2: Check what collision WOULD happen ======
+        glm::vec3 futurePosition = player.sphereCenter + intendedMove;
+        CollisionResult collision = levelCollision.CheckSphereCollisionDetailed(
+            futurePosition, player.sphereScale);
+
+        // ====== STEP 3: Apply corrected movement ======
+        glm::vec3 finalMovement = intendedMove;
 
         if (collision.collided) {
-            /*
-            std::cout << "========== COLLISION DETECTED ==========" << std::endl;
-            std::cout << "Mesh Name: " << collision.meshName << std::endl;
-            std::cout << "Collision Point: ("
-                << collision.collisionPoint.x << ", "
-                << collision.collisionPoint.y << ", "
-                << collision.collisionPoint.z << ")" << std::endl;
-            std::cout << "Collision Normal: ("
-                << collision.collisionNormal.x << ", "
-                << collision.collisionNormal.y << ", "
-                << collision.collisionNormal.z << ")" << std::endl;
-            std::cout << "Penetration Depth: " << collision.penetrationDepth << std::endl;
-            std::cout << "========================================" << std::endl;
-            */
-
-            int depth = collision.penetrationDepth;
-
-			player.passCollisionData(depth);
             player.Colliding = true;
+            player.collisionNormal = collision.collisionNormal;
+            player.collisionDepth = static_cast<int>(collision.penetrationDepth);
+
+            // If colliding with floor, stop vertical movement
+            if (collision.collisionNormal.y > 0.5f) {
+                finalMovement.y = 0.0f;
+                player.verticalVelocity = 0.0f;
+                player.jumpCount = 0;
+            }
+
+            // Project movement along collision surface for sliding
+            glm::vec3 slidingMove = player.CollideAndSlide(finalMovement, 0);
+            finalMovement = slidingMove;
+
+            // Push out of any penetration
+            if (collision.penetrationDepth > 0.0f) {
+                finalMovement += collision.collisionNormal *
+                    (collision.penetrationDepth + player.skinWidth);
+            }
         }
         else {
             player.Colliding = false;
         }
+
+        // Actually move the player with the corrected movement
+        player.ApplyMovement(finalMovement);
+        player.Update(deltaTime);
         
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1980.0f / 1080.0f, 0.01f, 100.0f);
@@ -334,7 +346,7 @@ int main() {
 
         // Render Test Level
         glm::mat4 modelTestLevel = glm::mat4(1.0f);
-        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -1.5f, 0.0f));
+        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -6.5f, 0.0f));
         modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
 		levelCollision.BuildFromModel(TestLevel, modelTestLevel);
 

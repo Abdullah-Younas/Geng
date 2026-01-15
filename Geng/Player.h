@@ -18,6 +18,7 @@ public:
     float skinWidth;
     bool Colliding;
     int collisionDepth;
+	glm::vec3 collisionNormal;
 
     // Movement properties
     float verticalVelocity;
@@ -33,7 +34,7 @@ public:
     static constexpr int MAX_JUMPS = 2;
 
     // Constructor
-    Player(const glm::vec3& startPosition = glm::vec3(0.0f, 0.25f, 1.0f));
+    Player(const glm::vec3& startPosition = glm::vec3(0.0f, 0.5f, 1.0f));
 
     // Update methods
     void ProcessKeyboard(bool forward, bool backward, bool left, bool right, float deltaTime);
@@ -43,7 +44,7 @@ public:
     // Collision response methods (call these from main)
     void SetSpherePosition(const glm::vec3& newPosition);
     void MoveSphere(const glm::vec3& delta);
-	void passCollisionData(int depth);
+	void passCollisionData(int depth, glm::vec3& CollisionNormal);
 
     // Getters
     glm::vec3 GetPosition() const { return camera.Position; }
@@ -53,12 +54,15 @@ public:
     glm::vec3 GetVelocity() const;
     float GetZoom() const { return camera.Zoom; }
 
-	glm::vec3 CollideAndSlide();  // New method for collision response
+    glm::vec3 CollideAndSlide(const glm::vec3& vel, int depth = 0);
+    void CalculateMovement(float deltaTime);  // Calculate intended movement
+    void ApplyMovement(const glm::vec3& movement);  // Actually move the player
+    glm::vec3 GetIntendedMovement() const { return intendedMovement; }
 
 private:
+    glm::vec3 intendedMovement;
     void UpdateCameraFromSphere();  // Changed from UpdateSpherePosition
-    void ApplyGravity(float deltaTime);
-    void CheckGroundCollision();
+    //void ApplyGravity(float deltaTime);
     glm::vec3 velocity;
 };
 
