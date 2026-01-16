@@ -61,8 +61,13 @@ float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 bool skyBoxOn = true;
 bool showSphere = true;
 
+//custom maths
 Transformations transformer;
+
+//Models
 Model TestLevel;
+
+//Collisions
 LevelCollision levelCollision;
 
 //Debugging the collisions box
@@ -95,6 +100,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+//Rendering the debug collision box
 void RenderDebugBox(const BoundingBox& box, unsigned int shader, const glm::mat4& view, const glm::mat4& projection) {
     float vertices[] = {
         box.min.x, box.min.y, box.min.z,
@@ -177,6 +183,7 @@ int main() {
         glm::vec3(100.0f, 100.0f, 100.0f)
     };
 
+    //loading models error handler
     if (!TestLevel.Load("TestLevel.obj")) {
         std::cerr << "Failed to load model" << std::endl;
         return -1;
@@ -187,6 +194,7 @@ int main() {
     unsigned int skyboxShader = createShaderProgram(CubeMapVShader, CubeMapFShader);
 	unsigned int debugShader = createShaderProgram(debugVertexShader, debugFragmentShader);
 
+    // Skybox 
     std::vector<std::string> faces = {
         "right.jpg",
         "left.jpg",
@@ -258,16 +266,16 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // ====== STEP 1: Calculate intended movement ======
+        // Calculate intended movement
         player.CalculateMovement(deltaTime);
         glm::vec3 intendedMove = player.GetIntendedMovement();
 
-        // ====== STEP 2: Check what collision WOULD happen ======
+        // Check what collision WOULD happen
         glm::vec3 futurePosition = player.sphereCenter + intendedMove;
         CollisionResult collision = levelCollision.CheckSphereCollisionDetailed(
             futurePosition, player.sphereScale);
 
-        // ====== STEP 3: Apply corrected movement ======
+        // Apply corrected movement
         glm::vec3 finalMovement = intendedMove;
 
         if (collision.collided) {
@@ -304,7 +312,7 @@ int main() {
         glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1980.0f / 1080.0f, 0.01f, 100.0f);
         glm::mat4 view = player.GetViewMatrix();
 
-        // ========== Lighting Pass ==========
+        // Lighting Pass
         glUseProgram(lightingShader);
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -354,7 +362,7 @@ int main() {
         TestLevel.Render(lightingShader);
         glUseProgram(lightingShader);
 
-        // ========== Render Sphere ==========
+        // Render Sphere
         if (showSphere) {
             glm::mat4 modelSphere = glm::mat4(1.0f);
             modelSphere = glm::translate(modelSphere, player.spherePosition);
@@ -367,7 +375,7 @@ int main() {
             glBindVertexArray(0);
         }
 
-        // ========== Debug Collision Boxes ==========
+        // Debug Collision Boxes
         if (showCollisionBoxes) {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -382,12 +390,12 @@ int main() {
             glDisable(GL_BLEND);
         }
 
-        // ========== Skybox Pass ==========
+        // Skybox Pass
         if (skyBoxOn) {
             skybox.Render(view, projection);
         }
 
-        // ========== ImGui Frame ==========
+        // ImGui Frame
         ImGui::Begin("Scene Controls");
         ImGui::Checkbox("Skybox?", &skyBoxOn);
         ImGui::ColorEdit4("Sky Color", ScreenColor);
@@ -424,7 +432,7 @@ int main() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        // ========== End Frame ==========
+        // End Frame
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -433,7 +441,7 @@ int main() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    // ================== Cleanup ==================
+    // Cleanup
     glDeleteVertexArrays(1, &sphereVAO);
     glDeleteBuffers(1, &sphereVBO);
     glDeleteBuffers(1, &sphereIBO);
