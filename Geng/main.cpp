@@ -1,4 +1,4 @@
-// ================== Includes ==================
+// Includes
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -35,7 +35,7 @@ Player player(glm::vec3(0.0f, 0.25f, 1.0f));
 #include "Sphere.h"
 #include "LevelCollision.h"
 
-// ================== Globals ==================
+// Globals
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
@@ -58,6 +58,8 @@ float SpotlightOuterCutoff = 12.0f;
 float FogIntensity = 1.04f;
 float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
+float FramePerSecond = 0;
+
 bool skyBoxOn = true;
 bool showSphere = true;
 
@@ -74,7 +76,7 @@ LevelCollision levelCollision;
 bool showCollisionBoxes = false;
 unsigned int debugShader = 0;
 
-// ================== Input Handling ==================
+// Input Handling
 void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -147,7 +149,7 @@ void RenderDebugBox(const BoundingBox& box, unsigned int shader, const glm::mat4
     glBindVertexArray(0);
 }
 
-// ================== Main ==================
+// Main
 int main() {
     // GLFW Init
     glfwInit();
@@ -189,7 +191,7 @@ int main() {
         return -1;
     }
 
-    // ================== Shaders ==================
+    // Shaders
     unsigned int lightingShader = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
     unsigned int skyboxShader = createShaderProgram(CubeMapVShader, CubeMapFShader);
 	unsigned int debugShader = createShaderProgram(debugVertexShader, debugFragmentShader);
@@ -205,7 +207,7 @@ int main() {
     };
     Skybox skybox(faces, skyboxShader);
 
-    // ================== Sphere Setup ==================
+    // Sphere Setup
     Sphere sphere(1.0f, 36, 18, true);
 
     GLuint sphereVAO, sphereVBO, sphereIBO;
@@ -242,7 +244,7 @@ int main() {
 
     glUseProgram(lightingShader);
 
-    // ================== ImGui Setup ==================
+    // ImGui Setup
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -250,11 +252,28 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    // ================== Main Render Loop ==================
+    // Frames Counter
+    double prevTime = 0.0;
+    double crntTime = 0.0;  
+    double timeDiff = 0.0;
+	unsigned int counter = 0;
+
+    // Main Render Loop
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = float(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        double currentTime = glfwGetTime();
+        counter++;
+        timeDiff = currentTime - prevTime;
+
+        // Update every 1/30th second (~0.0333s)
+        if (timeDiff >= 1.0 / 30.0) {
+            FramePerSecond = counter / timeDiff;
+            counter = 0;
+            prevTime = currentTime;
+        }
 
         processInput(window);
 
@@ -354,7 +373,7 @@ int main() {
 
         // Render Test Level
         glm::mat4 modelTestLevel = glm::mat4(1.0f);
-        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -6.5f, 0.0f));
+        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
         modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
 		levelCollision.BuildFromModel(TestLevel, modelTestLevel);
 
@@ -426,6 +445,9 @@ int main() {
         ImGui::Separator();
         ImGui::Text("Debug Visualization");
         ImGui::Checkbox("Show Collision Boxes", &showCollisionBoxes);
+
+        ImGui::Separator();
+        ImGui::Text("FPS: %.2f", FramePerSecond);
 
         ImGui::End();
 
