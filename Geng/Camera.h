@@ -19,7 +19,7 @@ const float rollAng = 4.0f; // max roll
 const float rollSpeed = 35.0f; // degrees per second
 const float SPEED = 6.5f;
 const float SENSITIVITY = 0.15f;
-const float ZOOM = 75.0f;
+const float ZOOM = 90.0f;
 
 
 class Camera
@@ -141,8 +141,8 @@ public:
         Zoom -= (float)yoffset;
         if (Zoom < 30.0f)
             Zoom = 30.0f;
-        if (Zoom > 75.0f)
-            Zoom = 75.0f;
+        if (Zoom > 90.0f)
+            Zoom = 90.0f;
     }
 
 private:

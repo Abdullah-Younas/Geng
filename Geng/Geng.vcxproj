@@ -172,6 +172,7 @@
     <ClInclude Include="CallBacks.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Formulas.h" />
+    <ClInclude Include="gltext.h" />
     <ClInclude Include="LevelCollision.h" />
     <ClInclude Include="libs\Include\stb_image.h" />
     <ClInclude Include="model_loader.h" />

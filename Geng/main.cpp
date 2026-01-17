@@ -9,6 +9,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <stb_image.h>
 
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -19,10 +20,12 @@
 #include <Windows.h>
 using namespace std;
 
-
+#define GLT_IMPLEMENTATION
+#include "gltext.h"
 #include "shader_utils.h"
 #include "shaders.h"
 #include "Player.h"
+#include <string.h>
 
 //Made this player global for the Callbacks
 Player player(glm::vec3(0.0f, 0.25f, 1.0f));
@@ -58,7 +61,10 @@ float SpotlightOuterCutoff = 12.0f;
 float FogIntensity = 1.04f;
 float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 
-float FramePerSecond = 0;
+double FramePerSecond;
+char str[30];
+
+char key[30] = "";
 
 bool skyBoxOn = true;
 bool showSphere = true;
@@ -81,10 +87,31 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    // CLEAR the key string at the start of each frame
+    key[0] = '\0';  // Reset to empty string
+
     bool forward = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
     bool backward = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
     bool left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
     bool right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
+
+    if (forward) {
+        strcat_s(key, "W");
+    }
+    if (backward) {
+        strcat_s(key, "S");
+    }
+    if (left) {
+        strcat_s(key, "A");
+    }
+    if (right) {
+        strcat_s(key, "D");
+    }
+
+    // If no keys pressed, show that
+    if (strlen(key) == 0) {
+        strcpy_s(key, "None");
+    }
 
     player.ProcessKeyboard(forward, backward, left, right, deltaTime);
 
@@ -94,11 +121,12 @@ void processInput(GLFWwindow* window) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow* window, int keyCode, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+    if (keyCode == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
         player.Jump();
+        strcat_s(key, "Jump");  // Added semicolon
     }
 }
 
@@ -157,18 +185,25 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(1980, 1080, "Lighting", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "GENG", NULL, NULL);
     if (!window) {
         cout << "Failed to create GLFW window\n";
         glfwTerminate();
         return -1;
     }
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetKeyCallback(window, key_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         cout << "Failed to initialize GLAD\n";
+        return -1;
+    }
+
+    // Initialize glText
+    if (!gltInit()) {
+        cout << "Failed to initialize glText\n";
         return -1;
     }
 
@@ -258,6 +293,9 @@ int main() {
     double timeDiff = 0.0;
 	unsigned int counter = 0;
 
+    GLTtext *FpsText = gltCreateText();
+    GLTtext *InputKey = gltCreateText();
+
     // Main Render Loop
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = float(glfwGetTime());
@@ -280,6 +318,8 @@ int main() {
         // Clear Buffers
         glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -432,27 +472,37 @@ int main() {
         ImGui::SliderFloat("Dir Light Intensity", &DirLightIntensity, 0.1f, 50.0f);
 
         ImGui::Separator();
-        ImGui::Text("Camera Position:");
-        ImGui::Text("X: %.2f", player.GetPosition().x);
-        ImGui::Text("Y: %.2f", player.GetPosition().y);
-        ImGui::Text("Z: %.2f", player.GetPosition().z);
-
-        ImGui::Text("Sphere/Center of Sphere Position:");
-        ImGui::Text("X: %.2f", player.sphereCenter.x);
-        ImGui::Text("Y: %.2f", player.sphereCenter.y);
-        ImGui::Text("Z: %.2f", player.sphereCenter.z);
-
-        ImGui::Separator();
         ImGui::Text("Debug Visualization");
         ImGui::Checkbox("Show Collision Boxes", &showCollisionBoxes);
-
-        ImGui::Separator();
-        ImGui::Text("FPS: %.2f", FramePerSecond);
 
         ImGui::End();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+
+        //Text Rendering
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        gltBeginDraw();
+
+        sprintf_s(str, "FrameRate: %.2f", min(FramePerSecond, 240.0f));
+        gltSetText(FpsText, str);
+
+        sprintf_s(str, "Keys: %s", key);
+        gltSetText(InputKey, str);
+
+        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        gltDrawText2D(FpsText, 0.0f, 0.0f, 2.0f);
+        gltDrawText2D(InputKey, 0.0f, 30.0f, 2.0f);
+
+        gltEndDraw();
+
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
 
         // End Frame
         glfwSwapBuffers(window);
@@ -471,6 +521,9 @@ int main() {
     skybox.Cleanup();
     glDeleteProgram(lightingShader);
     glDeleteProgram(skyboxShader);
+
+    gltDeleteText(FpsText);
+    gltTerminate();
 
     glfwTerminate();
     return 0;

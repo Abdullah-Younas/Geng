@@ -176,5 +176,8 @@
     <ClInclude Include="Formulas.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="gltext.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
