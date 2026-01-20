@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "Formulas.h"
+#include "LevelCollision.h"
 
 Formulas formulas;
 
@@ -18,7 +19,11 @@ Player::Player(const glm::vec3& startPosition)
     Colliding(false),
     collisionDepth(0),
     collisionNormal(0.0f, 0.0f, 0.0f),
-    intendedMovement(0.0f, 0.0f, 0.0f)
+    intendedMovement(0.0f, 0.0f, 0.0f),
+    isRayHitting(false),
+    rayHitPoint(0.0f, 0.0f, 0.0f),
+    rayHitNormal(0.0f, 0.0f, 0.0f),
+    rayDistance(0.0f)
 {
     UpdateCameraFromSphere();
 }
@@ -87,6 +92,34 @@ void Player::Update(float deltaTime) {
         camera.UpdateSpeed(GROUND_SPEED);
     }
 }
+
+void Player::PerformRaycast(LevelCollision& collision, float maxDistance) {
+    isRayHitting = false;
+    rayDistance = maxDistance;
+
+    glm::vec3 origin = camera.Position;
+
+    glm::vec3 rayDir = glm::normalize(camera.Front);
+
+    const int steps = 100;
+    float stepSize = maxDistance / steps;
+
+    for (int i = 0; i <= steps; i++) {
+        float currentDistance = i * stepSize;
+        glm::vec3 TestPoint = origin + (rayDir * currentDistance);
+
+        CollisionResult result = collision.CheckSphereCollisionDetailed(TestPoint, 0.01f);
+
+        if (result.collided) {
+            isRayHitting = true;
+            rayHitPoint = TestPoint;
+            rayHitNormal = result.collisionNormal;
+            rayDistance = currentDistance;
+            break;
+        }
+    }
+}
+
 
 void Player::UpdateCameraFromSphere() {
     camera.Position = spherePosition + glm::vec3(0.0f, 1.5f, 0.0f);

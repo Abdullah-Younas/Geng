@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 #include "Camera.h"
 
+class LevelCollision;
+
 class Player {
 public:
     // Camera component
@@ -20,6 +22,12 @@ public:
     int collisionDepth;
 	glm::vec3 collisionNormal;
 
+    // Raycast properties
+    bool isRayHitting;
+	glm::vec3 rayHitPoint;
+	glm::vec3 rayHitNormal;
+    float rayDistance;
+
     // Movement properties
     float verticalVelocity;
     int jumpCount;
@@ -32,6 +40,7 @@ public:
     static constexpr float AIR_SPEED = 5.5f;
     static constexpr float GROUND_LEVEL = 0.0f;
     static constexpr int MAX_JUMPS = 2;
+    static constexpr float DEFAULT_RAY_DISTANCE = 15.0f;
 
     // Constructor
     Player(const glm::vec3& startPosition = glm::vec3(0.0f, 0.5f, 1.0f));
@@ -40,6 +49,14 @@ public:
     void ProcessKeyboard(bool forward, bool backward, bool left, bool right, float deltaTime);
     void Jump();
     void Update(float deltaTime);
+
+    // Raycast methods
+	void PerformRaycast(LevelCollision& collision, float maxDistance = DEFAULT_RAY_DISTANCE);
+    bool GetRayHit() const { return isRayHitting; }
+    glm::vec3 GetRayHitPoint() const { return rayHitPoint; }
+    glm::vec3 GetRayHitNormal() const { return rayHitNormal; }
+    float GetRayDistance() const { return rayDistance; }
+
 
     // Collision response methods (call these from main)
     void SetSpherePosition(const glm::vec3& newPosition);

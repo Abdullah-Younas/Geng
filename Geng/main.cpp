@@ -69,6 +69,9 @@ char key[30] = "";
 bool skyBoxOn = true;
 bool showSphere = true;
 
+bool performRaycast = false;
+bool raycastContinuous = false;
+
 //custom maths
 Transformations transformer;
 
@@ -127,6 +130,14 @@ void key_callback(GLFWwindow* window, int keyCode, int scancode, int action, int
     {
         player.Jump();
         strcat_s(key, "Jump");  // Added semicolon
+    }
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        performRaycast = true;
     }
 }
 
@@ -195,6 +206,7 @@ int main() {
     glfwSwapInterval(1);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         cout << "Failed to initialize GLAD\n";
@@ -296,6 +308,12 @@ int main() {
     GLTtext *FpsText = gltCreateText();
     GLTtext *InputKey = gltCreateText();
 
+    // Build collision data ONCE at initialization
+    glm::mat4 modelTestLevel = glm::mat4(1.0f);
+    modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
+    modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
+    levelCollision.BuildFromModel(TestLevel, modelTestLevel);  // Only once!
+
     // Main Render Loop
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = float(glfwGetTime());
@@ -366,6 +384,33 @@ int main() {
         // Actually move the player with the corrected movement
         player.ApplyMovement(finalMovement);
         player.Update(deltaTime);
+
+        if (raycastContinuous || performRaycast) {
+            player.PerformRaycast(levelCollision, 10.0f);  // 10.0f is max ray distance
+            performRaycast = false;  // Reset flag if in click mode
+        }
+
+        // Debug visualization for raycast
+        if (player.GetRayHit()) {
+            // You can use this info however you want
+            // For example, print to console or display in ImGui
+            glm::vec3 hitPoint = player.GetRayHitPoint();
+            float distance = player.GetRayDistance();
+
+            // Optional: Render a sphere at hit point for debugging
+            if (showSphere) {
+                glUseProgram(lightingShader);
+                glm::mat4 hitSphereModel = glm::mat4(1.0f);
+                hitSphereModel = glm::translate(hitSphereModel, hitPoint);
+                hitSphereModel = glm::scale(hitSphereModel, glm::vec3(0.1f));  // Small debug sphere
+
+                glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(hitSphereModel));
+
+                glBindVertexArray(sphereVAO);
+                glDrawElements(GL_TRIANGLES, sphere.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
+                glBindVertexArray(0);
+            }
+        }
         
         // Matrices
         glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1980.0f / 1080.0f, 0.01f, 100.0f);
@@ -415,7 +460,6 @@ int main() {
         glm::mat4 modelTestLevel = glm::mat4(1.0f);
         modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
         modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
-		levelCollision.BuildFromModel(TestLevel, modelTestLevel);
 
         glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
         TestLevel.Render(lightingShader);
@@ -474,6 +518,26 @@ int main() {
         ImGui::Separator();
         ImGui::Text("Debug Visualization");
         ImGui::Checkbox("Show Collision Boxes", &showCollisionBoxes);
+
+        ImGui::Separator();
+        ImGui::Text("Raycast Controls");
+        ImGui::Checkbox("Continuous Raycast", &raycastContinuous);
+
+        if (player.GetRayHit()) {
+            ImGui::TextColored(ImVec4(0, 1, 0, 1), "Ray Hit: TRUE");
+            ImGui::Text("Distance: %.2f", player.GetRayDistance());
+            glm::vec3 hitPos = player.GetRayHitPoint();
+            ImGui::Text("Hit Point: (%.2f, %.2f, %.2f)", hitPos.x, hitPos.y, hitPos.z);
+            glm::vec3 hitNorm = player.GetRayHitNormal();
+            ImGui::Text("Hit Normal: (%.2f, %.2f, %.2f)", hitNorm.x, hitNorm.y, hitNorm.z);
+        }
+        else {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Ray Hit: FALSE");
+        }
+
+        if (ImGui::Button("Fire Raycast (or Left Click)")) {
+            performRaycast = true;
+        }
 
         ImGui::End();
 
