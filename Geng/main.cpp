@@ -90,8 +90,19 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) return;
     // CLEAR the key string at the start of each frame
     key[0] = '\0';  // Reset to empty string
+
+    static bool lastMouseState = false;
+    bool mousePressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
+	if (mousePressed && !lastMouseState) {
+        performRaycast = true;
+    }
+
+    lastMouseState = mousePressed;
 
     bool forward = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
     bool backward = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
@@ -130,14 +141,6 @@ void key_callback(GLFWwindow* window, int keyCode, int scancode, int action, int
     {
         player.Jump();
         strcat_s(key, "Jump");  // Added semicolon
-    }
-}
-
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        performRaycast = true;
     }
 }
 
@@ -206,7 +209,6 @@ int main() {
     glfwSwapInterval(1);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetKeyCallback(window, key_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         cout << "Failed to initialize GLAD\n";
@@ -385,9 +387,12 @@ int main() {
         player.ApplyMovement(finalMovement);
         player.Update(deltaTime);
 
-        if (raycastContinuous || performRaycast) {
-            player.PerformRaycast(levelCollision, 10.0f);  // 10.0f is max ray distance
-            performRaycast = false;  // Reset flag if in click mode
+        if (raycastContinuous) {
+            player.PerformRaycast(levelCollision, 10.0f);
+        }
+        else if (performRaycast) {
+            player.PerformRaycast(levelCollision, 10.0f);
+            performRaycast = false;
         }
 
         // Debug visualization for raycast

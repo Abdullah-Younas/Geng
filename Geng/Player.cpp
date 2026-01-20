@@ -101,7 +101,7 @@ void Player::PerformRaycast(LevelCollision& collision, float maxDistance) {
 
     glm::vec3 rayDir = glm::normalize(camera.Front);
 
-    const int steps = 100;
+    const int steps = 300;
     float stepSize = maxDistance / steps;
 
     for (int i = 0; i <= steps; i++) {
