@@ -17,25 +17,30 @@ bool Model::Load(const std::string& path) {
 
 void Model::Render(GLuint shaderProgram) {
     for (auto& mesh : meshes) {
-        // Bind textures
-        GLuint diffuseTex = 0;
+        // Handle diffuse texture
         if (!mesh.material.diffuseTexture.empty()) {
             auto it = loadedTextures.find(mesh.material.diffuseTexture);
             if (it != loadedTextures.end()) {
-                diffuseTex = it->second;
                 glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, diffuseTex);
+                glBindTexture(GL_TEXTURE_2D, it->second);
                 glUniform1i(glGetUniformLocation(shaderProgram, "material.diffuse"), 0);
-
-                // Use same texture for specular if no separate specular map
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, diffuseTex);
-                glUniform1i(glGetUniformLocation(shaderProgram, "material.specular"), 1);
             }
         }
+        else {
+            // No texture - bind a white default texture or create one
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, 0);  // Unbind
+        }
 
-        // Set material shininess only
-        glUniform1f(glGetUniformLocation(shaderProgram, "material.shininess"), 32.0f);
+        // Handle specular texture - use a dark/black texture for specular instead of diffuse
+        // This prevents everything from being overly shiny
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);  // Unbind - this will sample black
+        glUniform1i(glGetUniformLocation(shaderProgram, "material.specular"), 1);
+
+        // Use the actual material shininess
+        float shininess = (mesh.material.shininess > 0.0f) ? mesh.material.shininess : 32.0f;
+        glUniform1f(glGetUniformLocation(shaderProgram, "material.shininess"), shininess);
 
         // Draw the mesh
         glBindVertexArray(mesh.VAO);
@@ -164,7 +169,7 @@ bool Model::LoadMTL(const std::string& path, std::vector<Material>& materials) {
             currentMtl->ambient = glm::vec3(0.1f);
             currentMtl->diffuse = glm::vec3(0.8f);
             currentMtl->specular = glm::vec3(0.5f);
-            currentMtl->shininess = 32.0f;
+            currentMtl->shininess = 0.0f; // Do this for material not having a shininess value
         }
         else if (currentMtl) {
             if (prefix == "Ka") iss >> currentMtl->ambient.r >> currentMtl->ambient.g >> currentMtl->ambient.b;

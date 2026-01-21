@@ -9,7 +9,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <stb_image.h>
 
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -48,7 +47,7 @@ float DirLightDirection[3] = { 0.67f, -1.0f, 1.0f };
 float DirLightSpec[3] = { 1.0f, 1.0f, 1.0f };
 float DirLightAmbient[3] = { 1.0f, 1.0f, 1.0f };
 float DirLightDiff[3] = { 1.0f, 1.0f, 1.0f };
-float DirLightIntensity = 1.5f;
+float DirLightIntensity = 0.75f;
 
 float PointLightSpec[3] = { 0.0f, 0.0f, 0.0f };
 float PointLightDiff[3] = { 0.0f, 0.0f, 0.0f };
@@ -64,13 +63,29 @@ float FogColor[3] = { 0.21f, 0.1f, 0.16f };
 double FramePerSecond;
 char str[30];
 
+struct InputState {
+    bool forward = false;
+    bool backward = false;
+    bool left = false;
+    bool right = false;
+    bool jump = false;
+    bool jumpPressed = false;
+};
+InputState currentInput;
 char key[30] = "";
 
 bool skyBoxOn = true;
 bool showSphere = true;
+bool enableShadows = true;
 
 bool performRaycast = false;
-bool raycastContinuous = false;
+bool raycastContinuous = true;
+
+// Shadow mapping
+const unsigned int SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
+unsigned int depthMapFBO;
+unsigned int depthMap;
+unsigned int shadowShader;
 
 //custom maths
 Transformations transformer;
@@ -91,17 +106,21 @@ void processInput(GLFWwindow* window) {
         glfwSetWindowShouldClose(window, true);
 
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse) return;
-    // CLEAR the key string at the start of each frame
-    key[0] = '\0';  // Reset to empty string
+
+    if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+        key[0] = '\0';
+        strcpy_s(key, "None");
+        return;
+    }
+
+    key[0] = '\0';
 
     static bool lastMouseState = false;
     bool mousePressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
 
-	if (mousePressed && !lastMouseState) {
+    if (mousePressed && !lastMouseState) {
         performRaycast = true;
     }
-
     lastMouseState = mousePressed;
 
     bool forward = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
@@ -109,42 +128,53 @@ void processInput(GLFWwindow* window) {
     bool left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
     bool right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
 
-    if (forward) {
-        strcat_s(key, "W");
-    }
-    if (backward) {
-        strcat_s(key, "S");
-    }
-    if (left) {
-        strcat_s(key, "A");
-    }
-    if (right) {
-        strcat_s(key, "D");
-    }
+    if (forward) strcat_s(key, "W");
+    if (backward) strcat_s(key, "S");
+    if (left) strcat_s(key, "A");
+    if (right) strcat_s(key, "D");
 
-    // If no keys pressed, show that
     if (strlen(key) == 0) {
         strcpy_s(key, "None");
     }
 
     player.ProcessKeyboard(forward, backward, left, right, deltaTime);
 
-    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    static bool iPressed = false;
+    static bool oPressed = false;
+
+    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) {
+        if (!iPressed) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            iPressed = true;
+        }
+    }
+    else {
+        iPressed = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
+        if (!oPressed) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            oPressed = true;
+        }
+    }
+    else {
+        oPressed = false;
+    }
 }
 
 void key_callback(GLFWwindow* window, int keyCode, int scancode, int action, int mods)
 {
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard) return;
+
     if (keyCode == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
         player.Jump();
-        strcat_s(key, "Jump");  // Added semicolon
+        strcat_s(key, " Jump");
     }
 }
 
-//Rendering the debug collision box
 void RenderDebugBox(const BoundingBox& box, unsigned int shader, const glm::mat4& view, const glm::mat4& projection) {
     float vertices[] = {
         box.min.x, box.min.y, box.min.z,
@@ -158,9 +188,9 @@ void RenderDebugBox(const BoundingBox& box, unsigned int shader, const glm::mat4
     };
 
     unsigned int indices[] = {
-        0,1, 1,2, 2,3, 3,0, // front
-        4,5, 5,6, 6,7, 7,4, // back
-        0,4, 1,5, 2,6, 3,7  // connecting
+        0,1, 1,2, 2,3, 3,0,
+        4,5, 5,6, 6,7, 7,4,
+        0,4, 1,5, 2,6, 3,7
     };
 
     static GLuint VAO = 0, VBO, EBO;
@@ -191,9 +221,29 @@ void RenderDebugBox(const BoundingBox& box, unsigned int shader, const glm::mat4
     glBindVertexArray(0);
 }
 
+void SetupShadowMapping() {
+    glGenFramebuffers(1, &depthMapFBO);
+
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+        SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 // Main
 int main() {
-    // GLFW Init
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -215,7 +265,6 @@ int main() {
         return -1;
     }
 
-    // Initialize glText
     if (!gltInit()) {
         cout << "Failed to initialize glText\n";
         return -1;
@@ -234,7 +283,6 @@ int main() {
         glm::vec3(100.0f, 100.0f, 100.0f)
     };
 
-    //loading models error handler
     if (!TestLevel.Load("TestLevel.obj")) {
         std::cerr << "Failed to load model" << std::endl;
         return -1;
@@ -243,16 +291,16 @@ int main() {
     // Shaders
     unsigned int lightingShader = createShaderProgram(vertexShaderSource, fragmentShaderSource1);
     unsigned int skyboxShader = createShaderProgram(CubeMapVShader, CubeMapFShader);
-	unsigned int debugShader = createShaderProgram(debugVertexShader, debugFragmentShader);
+    unsigned int debugShader = createShaderProgram(debugVertexShader, debugFragmentShader);
+    shadowShader = createShaderProgram(shadowDepthVertexShader, shadowDepthFragmentShader);
+
+    // Setup shadow mapping
+    SetupShadowMapping();
 
     // Skybox 
     std::vector<std::string> faces = {
-        "right.jpg",
-        "left.jpg",
-        "top.jpg",
-        "bottom.jpg",
-        "front.jpg",
-        "back.jpg"
+        "right.jpg", "left.jpg", "top.jpg",
+        "bottom.jpg", "front.jpg", "back.jpg"
     };
     Skybox skybox(faces, skyboxShader);
 
@@ -275,15 +323,12 @@ int main() {
 
     int stride = sphere.getInterleavedStride();
 
-    // Position attribute
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
 
-    // Normal attribute
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(float) * 3));
 
-    // Texture coordinate attribute
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(float) * 6));
 
@@ -303,18 +348,18 @@ int main() {
 
     // Frames Counter
     double prevTime = 0.0;
-    double crntTime = 0.0;  
+    double crntTime = 0.0;
     double timeDiff = 0.0;
-	unsigned int counter = 0;
+    unsigned int counter = 0;
 
-    GLTtext *FpsText = gltCreateText();
-    GLTtext *InputKey = gltCreateText();
+    GLTtext* FpsText = gltCreateText();
+    GLTtext* InputKey = gltCreateText();
 
     // Build collision data ONCE at initialization
     glm::mat4 modelTestLevel = glm::mat4(1.0f);
     modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
     modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
-    levelCollision.BuildFromModel(TestLevel, modelTestLevel);  // Only once!
+    levelCollision.BuildFromModel(TestLevel, modelTestLevel);
 
     // Main Render Loop
     while (!glfwWindowShouldClose(window)) {
@@ -326,7 +371,6 @@ int main() {
         counter++;
         timeDiff = currentTime - prevTime;
 
-        // Update every 1/30th second (~0.0333s)
         if (timeDiff >= 1.0 / 30.0) {
             FramePerSecond = counter / timeDiff;
             counter = 0;
@@ -338,8 +382,6 @@ int main() {
         // Clear Buffers
         glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -362,18 +404,15 @@ int main() {
             player.collisionNormal = collision.collisionNormal;
             player.collisionDepth = static_cast<int>(collision.penetrationDepth);
 
-            // If colliding with floor, stop vertical movement
             if (collision.collisionNormal.y > 0.5f) {
                 finalMovement.y = 0.0f;
                 player.verticalVelocity = 0.0f;
                 player.jumpCount = 0;
             }
 
-            // Project movement along collision surface for sliding
             glm::vec3 slidingMove = player.CollideAndSlide(finalMovement, 0);
             finalMovement = slidingMove;
 
-            // Push out of any penetration
             if (collision.penetrationDepth > 0.0f) {
                 finalMovement += collision.collisionNormal *
                     (collision.penetrationDepth + player.skinWidth);
@@ -383,7 +422,6 @@ int main() {
             player.Colliding = false;
         }
 
-        // Actually move the player with the corrected movement
         player.ApplyMovement(finalMovement);
         player.Update(deltaTime);
 
@@ -395,99 +433,152 @@ int main() {
             performRaycast = false;
         }
 
-        // Debug visualization for raycast
         if (player.GetRayHit()) {
-            // You can use this info however you want
-            // For example, print to console or display in ImGui
             glm::vec3 hitPoint = player.GetRayHitPoint();
             float distance = player.GetRayDistance();
+            cout << "Ray hitting!!" << endl;
+        }
 
-            // Optional: Render a sphere at hit point for debugging
-            if (showSphere) {
-                glUseProgram(lightingShader);
-                glm::mat4 hitSphereModel = glm::mat4(1.0f);
-                hitSphereModel = glm::translate(hitSphereModel, hitPoint);
-                hitSphereModel = glm::scale(hitSphereModel, glm::vec3(0.1f));  // Small debug sphere
+        // ================= SHADOW PASS =================
+        if (enableShadows) {
+            // Calculate light space matrix
+            glm::vec3 lightDir = glm::normalize(glm::vec3(
+                DirLightDirection[0],
+                DirLightDirection[1],
+                DirLightDirection[2]
+            ));
 
-                glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(hitSphereModel));
+            // Snap shadow frustum to texel-sized increments
+            glm::vec3 sceneCenter = player.GetPosition();
+            sceneCenter.y = 0.0f;
 
-                glBindVertexArray(sphereVAO);
-                glDrawElements(GL_TRIANGLES, sphere.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
-                glBindVertexArray(0);
+            // Calculate texel size in world space
+            float shadowMapSize = 30.0f; // Your ortho size (15.0f * 2)
+            float texelSize = shadowMapSize / SHADOW_WIDTH;
+
+            // Snap to grid
+            sceneCenter.x = floor(sceneCenter.x / texelSize) * texelSize;
+            sceneCenter.z = floor(sceneCenter.z / texelSize) * texelSize;
+
+            glm::vec3 lightPos = sceneCenter - lightDir * 25.0f;
+
+            glm::mat4 lightView = glm::lookAt(
+                lightPos,
+                sceneCenter,
+                glm::vec3(0.0f, 1.0f, 0.0f)
+            );
+
+            glm::mat4 lightProjection = glm::ortho(
+                -50.0f, 50.0f,  // Increased from -15.0f, 15.0f
+                -50.0f, 50.0f,
+                0.01f, 100.0f    // Also increased far plane
+            );
+
+            glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+            // Render to shadow map
+            glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+            glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            glUseProgram(shadowShader);
+            glUniformMatrix4fv(
+                glGetUniformLocation(shadowShader, "lightSpaceMatrix"),
+                1, GL_FALSE, glm::value_ptr(lightSpaceMatrix)
+            );
+
+            // Render scene for shadows
+            glm::mat4 modelTestLevelShadow = glm::mat4(1.0f);
+            modelTestLevelShadow = glm::translate(modelTestLevelShadow, glm::vec3(0.0f, -16.5f, 0.0f));
+            modelTestLevelShadow = transformer.ScaleMeshComb(modelTestLevelShadow, 2.0f);
+
+            glUniformMatrix4fv(
+                glGetUniformLocation(shadowShader, "model"),
+                1, GL_FALSE, glm::value_ptr(modelTestLevelShadow)
+            );
+
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK); // Changed to back
+
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(0.5f, 1.0f); // Smaller offset
+
+            TestLevel.Render(shadowShader);
+
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDisable(GL_CULL_FACE);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            // Reset viewport for normal rendering
+            glViewport(0, 0, 1920, 1080);
+
+            // ================= NORMAL PASS WITH SHADOWS =================
+            glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1920.0f / 1080.0f, 0.01f, 100.0f);
+            glm::mat4 view = player.GetViewMatrix();
+
+            glUseProgram(lightingShader);
+
+            // Pass light space matrix and shadow map to lighting shader
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "lightSpaceMatrix"),
+                1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, depthMap);
+            glUniform1i(glGetUniformLocation(lightingShader, "shadowMap"), 2);
+
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+            glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(player.GetPosition()));
+
+            glUniform1f(glGetUniformLocation(lightingShader, "FogIntensity"), FogIntensity);
+            glUniform3f(glGetUniformLocation(lightingShader, "fogColor"), FogColor[0], FogColor[1], FogColor[2]);
+
+            // Directional light
+            glUniform3f(glGetUniformLocation(lightingShader, "dirLight.direction"), DirLightDirection[0], DirLightDirection[1], DirLightDirection[2]);
+            glUniform3f(glGetUniformLocation(lightingShader, "dirLight.ambient"), DirLightAmbient[0], DirLightAmbient[1], DirLightAmbient[2]);
+            glUniform3f(glGetUniformLocation(lightingShader, "dirLight.diffuse"), DirLightDiff[0], DirLightDiff[1], DirLightDiff[2]);
+            glUniform3f(glGetUniformLocation(lightingShader, "dirLight.specular"), DirLightSpec[0], DirLightSpec[1], DirLightSpec[2]);
+            glUniform1f(glGetUniformLocation(lightingShader, "dirIntensity"), DirLightIntensity);
+
+            // Point lights
+            for (int i = 0; i < 4; i++) {
+                std::string base = "pointLights[" + std::to_string(i) + "]";
+                glUniform3fv(glGetUniformLocation(lightingShader, (base + ".position").c_str()), 1, &pointLightPositions[i][0]);
+                glUniform3f(glGetUniformLocation(lightingShader, (base + ".ambient").c_str()), 1.0f, 1.0f, 1.0f);
+                glUniform3f(glGetUniformLocation(lightingShader, (base + ".diffuse").c_str()), PointLightDiff[0], PointLightDiff[1], PointLightDiff[2]);
+                glUniform3f(glGetUniformLocation(lightingShader, (base + ".specular").c_str()), PointLightSpec[0], PointLightSpec[1], PointLightSpec[2]);
+                glUniform1f(glGetUniformLocation(lightingShader, (base + ".constant").c_str()), 1.0f);
+                glUniform1f(glGetUniformLocation(lightingShader, (base + ".linear").c_str()), 0.09f);
+                glUniform1f(glGetUniformLocation(lightingShader, (base + ".quadratic").c_str()), 0.032f);
             }
-        }
-        
-        // Matrices
-        glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1980.0f / 1080.0f, 0.01f, 100.0f);
-        glm::mat4 view = player.GetViewMatrix();
 
-        // Lighting Pass
-        glUseProgram(lightingShader);
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3fv(glGetUniformLocation(lightingShader, "viewPos"), 1, glm::value_ptr(player.GetPosition()));
+            glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.position"), 1, glm::value_ptr(player.GetPosition()));
+            glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.direction"), 1, glm::value_ptr(player.GetFront()));
+            glUniform3f(glGetUniformLocation(lightingShader, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
+            glUniform3f(glGetUniformLocation(lightingShader, "spotLight.diffuse"), SpotLightDiff[0], SpotLightDiff[1], SpotLightDiff[2]);
+            glUniform3f(glGetUniformLocation(lightingShader, "spotLight.specular"), SpotLightSpec[0], SpotLightSpec[1], SpotLightSpec[2]);
+            glUniform1f(glGetUniformLocation(lightingShader, "spotLight.constant"), 1.0f);
+            glUniform1f(glGetUniformLocation(lightingShader, "spotLight.linear"), 0.09f);
+            glUniform1f(glGetUniformLocation(lightingShader, "spotLight.quadratic"), 0.032f);
+            glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
+            glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
 
-        glUniform1f(glGetUniformLocation(lightingShader, "FogIntensity"), FogIntensity);
-        glUniform3f(glGetUniformLocation(lightingShader, "fogColor"), FogColor[0], FogColor[1], FogColor[2]);
+            glm::mat4 modelTestLevel = glm::mat4(1.0f);
+            modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
+            modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
 
-        // Directional light
-        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.direction"), DirLightDirection[0], DirLightDirection[1], DirLightDirection[2]);
-        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.ambient"), DirLightAmbient[0], DirLightAmbient[1], DirLightAmbient[2]);
-        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.diffuse"), DirLightDiff[0], DirLightDiff[1], DirLightDiff[2]);
-        glUniform3f(glGetUniformLocation(lightingShader, "dirLight.specular"), DirLightSpec[0], DirLightSpec[1], DirLightSpec[2]);
-        glUniform1f(glGetUniformLocation(lightingShader, "dirIntensity"), DirLightIntensity);
-
-        // Point lights
-        for (int i = 0; i < 4; i++) {
-            std::string base = "pointLights[" + std::to_string(i) + "]";
-            glUniform3fv(glGetUniformLocation(lightingShader, (base + ".position").c_str()), 1, &pointLightPositions[i][0]);
-            glUniform3f(glGetUniformLocation(lightingShader, (base + ".ambient").c_str()), 1.0f, 1.0f, 1.0f);
-            glUniform3f(glGetUniformLocation(lightingShader, (base + ".diffuse").c_str()), PointLightDiff[0], PointLightDiff[1], PointLightDiff[2]);
-            glUniform3f(glGetUniformLocation(lightingShader, (base + ".specular").c_str()), PointLightSpec[0], PointLightSpec[1], PointLightSpec[2]);
-            glUniform1f(glGetUniformLocation(lightingShader, (base + ".constant").c_str()), 1.0f);
-            glUniform1f(glGetUniformLocation(lightingShader, (base + ".linear").c_str()), 0.09f);
-            glUniform1f(glGetUniformLocation(lightingShader, (base + ".quadratic").c_str()), 0.032f);
-        }
-
-        // Spotlight
-        glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.position"), 1, glm::value_ptr(player.GetPosition()));
-        glUniform3fv(glGetUniformLocation(lightingShader, "spotLight.direction"), 1, glm::value_ptr(player.GetFront()));
-        glUniform3f(glGetUniformLocation(lightingShader, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-        glUniform3f(glGetUniformLocation(lightingShader, "spotLight.diffuse"), SpotLightDiff[0], SpotLightDiff[1], SpotLightDiff[2]);
-        glUniform3f(glGetUniformLocation(lightingShader, "spotLight.specular"), SpotLightSpec[0], SpotLightSpec[1], SpotLightSpec[2]);
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.constant"), 1.0f);
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.linear"), 0.09f);
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.quadratic"), 0.032f);
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.cutOff"), glm::cos(glm::radians(SpotlightInnerCutoff)));
-        glUniform1f(glGetUniformLocation(lightingShader, "spotLight.outerCutOff"), glm::cos(glm::radians(SpotlightOuterCutoff)));
-
-        // Render Test Level
-        glm::mat4 modelTestLevel = glm::mat4(1.0f);
-        modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
-        modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
-
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
-        TestLevel.Render(lightingShader);
-        glUseProgram(lightingShader);
-
-        // Render Sphere
-        if (showSphere) {
-            glm::mat4 modelSphere = glm::mat4(1.0f);
-            modelSphere = glm::translate(modelSphere, player.spherePosition);
-            modelSphere = glm::scale(modelSphere, glm::vec3(player.sphereScale));
-
-            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelSphere));
-
-            glBindVertexArray(sphereVAO);
-            glDrawElements(GL_TRIANGLES, sphere.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
-            glBindVertexArray(0);
+            glUniformMatrix4fv(glGetUniformLocation(lightingShader, "model"), 1, GL_FALSE, glm::value_ptr(modelTestLevel));
+            TestLevel.Render(lightingShader);
         }
 
         // Debug Collision Boxes
         if (showCollisionBoxes) {
+            glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1920.0f / 1080.0f, 0.1f, 100.0f);
+            glm::mat4 view = player.GetViewMatrix();
+
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDisable(GL_DEPTH_TEST); // Draw on top
+            glDisable(GL_DEPTH_TEST);
 
             auto boxes = levelCollision.GetBoundingBoxes();
             for (const auto& box : boxes) {
@@ -500,6 +591,8 @@ int main() {
 
         // Skybox Pass
         if (skyBoxOn) {
+            glm::mat4 projection = glm::perspective(glm::radians(player.GetZoom()), 1920.0f / 1080.0f, 0.1f, 100.0f);
+            glm::mat4 view = player.GetViewMatrix();
             skybox.Render(view, projection);
         }
 
@@ -507,10 +600,7 @@ int main() {
         ImGui::Begin("Scene Controls");
         ImGui::Checkbox("Skybox?", &skyBoxOn);
         ImGui::ColorEdit4("Sky Color", ScreenColor);
-
-        ImGui::Separator();
-        ImGui::Text("Sphere Controls");
-        ImGui::Checkbox("Show Sphere", &showSphere);
+        ImGui::Checkbox("Enable Shadows", &enableShadows);
 
         ImGui::Separator();
         ImGui::Text("Directional Light");
@@ -524,31 +614,10 @@ int main() {
         ImGui::Text("Debug Visualization");
         ImGui::Checkbox("Show Collision Boxes", &showCollisionBoxes);
 
-        ImGui::Separator();
-        ImGui::Text("Raycast Controls");
-        ImGui::Checkbox("Continuous Raycast", &raycastContinuous);
-
-        if (player.GetRayHit()) {
-            ImGui::TextColored(ImVec4(0, 1, 0, 1), "Ray Hit: TRUE");
-            ImGui::Text("Distance: %.2f", player.GetRayDistance());
-            glm::vec3 hitPos = player.GetRayHitPoint();
-            ImGui::Text("Hit Point: (%.2f, %.2f, %.2f)", hitPos.x, hitPos.y, hitPos.z);
-            glm::vec3 hitNorm = player.GetRayHitNormal();
-            ImGui::Text("Hit Normal: (%.2f, %.2f, %.2f)", hitNorm.x, hitNorm.y, hitNorm.z);
-        }
-        else {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Ray Hit: FALSE");
-        }
-
-        if (ImGui::Button("Fire Raycast (or Left Click)")) {
-            performRaycast = true;
-        }
-
         ImGui::End();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
 
         //Text Rendering
         glDisable(GL_DEPTH_TEST);
@@ -565,15 +634,14 @@ int main() {
 
         gltColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-        gltDrawText2D(FpsText, 0.0f, 0.0f, 2.0f);
-        gltDrawText2D(InputKey, 0.0f, 30.0f, 2.0f);
+        gltDrawText2D(FpsText, 0.0f, 15.0f, 2.0f);
+        gltDrawText2D(InputKey, 0.0f, 45.0f, 2.0f);
 
         gltEndDraw();
 
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
-        // End Frame
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -582,16 +650,16 @@ int main() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    // Cleanup
-    glDeleteVertexArrays(1, &sphereVAO);
-    glDeleteBuffers(1, &sphereVBO);
-    glDeleteBuffers(1, &sphereIBO);
-
     skybox.Cleanup();
     glDeleteProgram(lightingShader);
     glDeleteProgram(skyboxShader);
+    glDeleteProgram(debugShader);
+    glDeleteFramebuffers(1, &depthMapFBO);
+    glDeleteTextures(1, &depthMap);
+    glDeleteProgram(shadowShader);
 
     gltDeleteText(FpsText);
+    gltDeleteText(InputKey);
     gltTerminate();
 
     glfwTerminate();
