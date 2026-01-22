@@ -47,7 +47,7 @@ float ScreenColor[4] = { 0.21f, 0.1f, 0.16f, 1.0f };
 
 float DirLightDirection[3] = { 0.67f, -1.0f, 1.0f };
 float DirLightSpec[3] = { 1.0f, 1.0f, 1.0f };
-float DirLightAmbient[3] = { 1.0f, 1.0f, 1.0f };
+float DirLightAmbient[3] = { 0.56f, 0.56f, 0.56f };
 float DirLightDiff[3] = { 1.0f, 1.0f, 1.0f };
 float DirLightIntensity = 0.75f;
 
@@ -76,6 +76,7 @@ struct InputState {
 InputState currentInput;
 char key[30] = "";
 bool Moving = false;
+bool Jumping = false;
 
 bool skyBoxOn = true;
 bool showSphere = true;
@@ -143,7 +144,7 @@ void processInput(GLFWwindow* window) {
     }
 
     // Always update Moving flag
-    Moving = (forward || backward || left || right);
+    Moving = ((forward || backward || left || right) && !Jumping);
 
     // Only process movement if UI isn't capturing
     if (!uiCapturing) {
@@ -182,6 +183,7 @@ void key_callback(GLFWwindow* window, int keyCode, int scancode, int action, int
     {
         player.Jump();
         strcat_s(key, " Jump");
+        Jumping = true; // Set to true when jump starts
     }
 }
 
@@ -365,8 +367,8 @@ int main() {
         return -1; // Error starting up the engine
     }
 
-    AudioEngine->setSoundVolume(0.025f);
-    FootStepEngine->setSoundVolume(0.5f);
+    AudioEngine->setSoundVolume(0.015f);
+    FootStepEngine->setSoundVolume(0.25f);
     AudioEngine->play2D("windows breakcore -proloxx.mp3", true);
 
     // Frames Counter
@@ -407,7 +409,7 @@ int main() {
         // Audio
         static ISound* FootStepsMusic = nullptr;
         static float footstepTimer = 0.0f;
-        static float footstepInterval = 0.3f;
+        static float footstepInterval = 0.25f;
         static const char* footstepSounds[] = {
             "Step1.wav",
             "Step2.wav",
@@ -469,6 +471,7 @@ int main() {
                 finalMovement.y = 0.0f;
                 player.verticalVelocity = 0.0f;
                 player.jumpCount = 0;
+                Jumping = false;
             }
 
             glm::vec3 slidingMove = player.CollideAndSlide(finalMovement, 0);
