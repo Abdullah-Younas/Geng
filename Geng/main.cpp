@@ -17,7 +17,9 @@
 #include <unordered_map>
 #include <algorithm>
 #include <Windows.h>
+#include <irrKlang.h>
 using namespace std;
+using namespace irrklang;
 
 #define GLT_IMPLEMENTATION
 #include "gltext.h"
@@ -73,6 +75,7 @@ struct InputState {
 };
 InputState currentInput;
 char key[30] = "";
+bool Moving = false;
 
 bool skyBoxOn = true;
 bool showSphere = true;
@@ -106,42 +109,50 @@ void processInput(GLFWwindow* window) {
         glfwSetWindowShouldClose(window, true);
 
     ImGuiIO& io = ImGui::GetIO();
+    bool uiCapturing = io.WantCaptureMouse || io.WantCaptureKeyboard;
 
-    if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
-        key[0] = '\0';
+    // Handle key string display
+    key[0] = '\0';
+    if (uiCapturing) {
         strcpy_s(key, "None");
-        return;
     }
 
-    key[0] = '\0';
-
+    // Mouse raycast
     static bool lastMouseState = false;
     bool mousePressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-
-    if (mousePressed && !lastMouseState) {
+    if (mousePressed && !lastMouseState && !uiCapturing) {
         performRaycast = true;
     }
     lastMouseState = mousePressed;
 
+    // Movement input (always checked, even if UI is active)
     bool forward = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
     bool backward = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
     bool left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
     bool right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
 
-    if (forward) strcat_s(key, "W");
-    if (backward) strcat_s(key, "S");
-    if (left) strcat_s(key, "A");
-    if (right) strcat_s(key, "D");
+    if (!uiCapturing) {
+        if (forward) strcat_s(key, "W");
+        if (backward) strcat_s(key, "S");
+        if (left) strcat_s(key, "A");
+        if (right) strcat_s(key, "D");
+    }
 
     if (strlen(key) == 0) {
         strcpy_s(key, "None");
     }
 
-    player.ProcessKeyboard(forward, backward, left, right, deltaTime);
+    // Always update Moving flag
+    Moving = (forward || backward || left || right);
 
+    // Only process movement if UI isn't capturing
+    if (!uiCapturing) {
+        player.ProcessKeyboard(forward, backward, left, right, deltaTime);
+    }
+
+    // Cursor toggle keys
     static bool iPressed = false;
     static bool oPressed = false;
-
     if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) {
         if (!iPressed) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -151,7 +162,6 @@ void processInput(GLFWwindow* window) {
     else {
         iPressed = false;
     }
-
     if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
         if (!oPressed) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -346,6 +356,19 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
+    // Audio Setup
+    ISoundEngine* AudioEngine = createIrrKlangDevice();
+    ISoundEngine* FootStepEngine = createIrrKlangDevice();
+    static ISound* FootStepsMusic = nullptr;
+
+    if (!AudioEngine) {
+        return -1; // Error starting up the engine
+    }
+
+    AudioEngine->setSoundVolume(0.025f);
+    FootStepEngine->setSoundVolume(0.5f);
+    AudioEngine->play2D("windows breakcore -proloxx.mp3", true);
+
     // Frames Counter
     double prevTime = 0.0;
     double crntTime = 0.0;
@@ -360,6 +383,8 @@ int main() {
     modelTestLevel = glm::translate(modelTestLevel, glm::vec3(0.0f, -16.5f, 0.0f));
     modelTestLevel = transformer.ScaleMeshComb(modelTestLevel, 2.0f);
     levelCollision.BuildFromModel(TestLevel, modelTestLevel);
+
+
 
     // Main Render Loop
     while (!glfwWindowShouldClose(window)) {
@@ -378,6 +403,42 @@ int main() {
         }
 
         processInput(window);
+
+        // Audio
+        static ISound* FootStepsMusic = nullptr;
+        static float footstepTimer = 0.0f;
+        static float footstepInterval = 0.3f;
+        static const char* footstepSounds[] = {
+            "Step1.wav",
+            "Step2.wav",
+            "Step3.wav",
+            "Step4.wav",
+            "Step5.wav"
+        };
+
+        if (Moving) {
+            footstepTimer += deltaTime;
+
+            if (footstepTimer >= footstepInterval) {
+                if (FootStepsMusic != nullptr) {
+                    FootStepsMusic->stop();
+                    FootStepsMusic->drop();
+                }
+
+                int randomIndex = rand() % 5;
+                FootStepsMusic = FootStepEngine->play2D(footstepSounds[randomIndex], false, false, true);
+
+                footstepTimer = 0.0f;
+            }
+        }
+        else {
+            footstepTimer = 0.0f;
+            if (FootStepsMusic != nullptr) {
+                FootStepsMusic->stop();
+                FootStepsMusic->drop();
+                FootStepsMusic = nullptr;
+            }
+        }
 
         // Clear Buffers
         glClearColor(ScreenColor[0], ScreenColor[1], ScreenColor[2], ScreenColor[3]);
@@ -646,6 +707,7 @@ int main() {
         glfwPollEvents();
     }
 
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -657,6 +719,7 @@ int main() {
     glDeleteFramebuffers(1, &depthMapFBO);
     glDeleteTextures(1, &depthMap);
     glDeleteProgram(shadowShader);
+    AudioEngine->drop();
 
     gltDeleteText(FpsText);
     gltDeleteText(InputKey);
