@@ -10,6 +10,7 @@
 #include <stb_image.h>
 
 #include <iostream>
+#include <math.h>
 #include <string>
 #include <vector>
 #include <fstream>
